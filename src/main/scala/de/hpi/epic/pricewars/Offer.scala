@@ -13,7 +13,3 @@ case class Offer ( offer_id: Option[Int],
                    price: Float,
                    shipping_time: Int,
                    prime: Boolean )
-
-object OfferJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport {
-  implicit val offerFormat = jsonFormat7(Offer)
-}

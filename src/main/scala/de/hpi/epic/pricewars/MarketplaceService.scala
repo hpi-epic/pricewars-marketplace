@@ -6,7 +6,7 @@ import spray.routing._
 import spray.http._
 import MediaTypes._
 
-import OfferJsonProtocol._
+import JSONConverter._
 
 class MarketplaceServiceActor extends Actor with MarketplaceService {
   override def actorRefFactory = context
