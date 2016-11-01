@@ -46,6 +46,14 @@ trait MarketplaceService extends HttpService {
           }
         }
       }
+    } ~
+    path("offers" / LongNumber) { id =>
+      get {
+        val offer = Store.get(id)
+        complete {
+          offer.toJson.toString()
+        }
+      }
     }
   }
 
