@@ -6,42 +6,49 @@ import scala.collection.mutable
   * Created by Jan on 01.11.2016.
   */
 object Store {
+  private var counter = 0;
   private val db = mutable.ListBuffer.empty[Offer]
-  db += Offer(Some(0), "Hana", "SAP", 5, 12000000.0f, 100, false)
 
-  def get(id: Long = -1): Seq[Offer] = {
-    val res = if (id == -1) db.toSeq else db.filter(_.offer_id.exists(_ == id)).toSeq
-    println(res)
-    res
+  def get: Result[Seq[Offer]] = {
+    Success(db)
   }
 
-  def add(offer: Offer): Long = {
-    val updated = offer.copy(offer_id = Some(db.length + 1))
+  def get(id: Long): Result[Offer] = {
+    db.find(_.offer_id.exists(_ == id)) match {
+      case Some(offer) => Success(offer)
+      case None => Failure(s"No offer with id $id found", 404)
+    }
+  }
+
+  def add(offer: Offer): Result[Offer] = {
+    counter = counter + 1
+    val updated = offer.copy(offer_id = Some(counter))
     db += updated
-    updated.offer_id.get
+    Success(updated)
   }
 
-  def update(id: Long, offer: Offer): Boolean = {
+  def update(id: Long, offer: Offer): Result[Offer] = {
     db.find(_.offer_id.exists(_ == id)) match {
       case Some(db_offer) =>
-        println(db_offer)
         db -= db_offer
         val updated = offer.copy(offer_id = db_offer.offer_id)
         db += updated
-        println(updated)
-        true
-      case None => false
+        Success(updated)
+      case None => Failure(s"No offer with id $id found", 404)
     }
   }
 
   //TODO: Use Try[Something] instead of Boolean
-  def remove(id: Long): Boolean = {
+  def remove(id: Long): Result[Unit] = {
     db.find(_.offer_id.exists(_ == id)) match {
       case Some(offer) =>
-        println(offer)
         db -= offer
-        true
-      case None => false
+        Success()
+      case None => Failure(s"No offer with id $id found", 404)
     }
+  }
+
+  def clear() = {
+    db.clear()
   }
 }

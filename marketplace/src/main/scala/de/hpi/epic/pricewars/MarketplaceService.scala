@@ -7,6 +7,7 @@ import spray.http._
 import MediaTypes._
 
 import JSONConverter._
+import ResultConverter._
 
 class MarketplaceServiceActor extends Actor with MarketplaceService {
   override def actorRefFactory = context
@@ -18,31 +19,17 @@ class MarketplaceServiceActor extends Actor with MarketplaceService {
   */
 trait MarketplaceService extends HttpService {
   val route = respondWithMediaType(MediaTypes.`application/json`) {
-    path("") {
-      get {
-        respondWithMediaType(`text/html`)
-        complete {
-          <html>
-            <body>
-              <h1>This is our Marketplace!</h1>
-            </body>
-          </html>
-        }
-      }
-    } ~
     path("offers") {
       get {
         complete {
-          println("get")
-          val offer = Store.get()
-          offer.toJson.toString()
+          Store.get
         }
       } ~
       post {
         entity(as[Offer]) { offer =>
           detach() {
             complete {
-              Store.add(offer).toString()
+              Store.add(offer)
             }
           }
         }
@@ -51,22 +38,15 @@ trait MarketplaceService extends HttpService {
     path("offers" / LongNumber) { id =>
       get {
         complete {
-          println("single get")
-          //TODO: return single value, not Sequence
-          val offer = Store.get(id)
-          offer.toJson.toString()
+          Store.get(id)
         }
       } ~
       delete {
         complete {
-          println("delete")
           val res = Store.remove(id)
-          //TODO: are these the right return values?
-
-          if (res) {
-            "{\"result\": \"deleted\"}"
-          } else {
-            StatusCodes.MethodNotAllowed -> "{\"result\": \"denied\"}"
+          res match {
+            case Success(v) => """{"result": "deleted"}"""
+            case f : Failure[Unit] => StatusCode.int2StatusCode(f.code) -> f.toJson.toString()
           }
         }
       } ~
@@ -74,14 +54,7 @@ trait MarketplaceService extends HttpService {
         entity(as[Offer]) { offer =>
           detach() {
             complete {
-              println("put")
-              val result = Store.update(id, offer)
-
-              if (result) {
-                "{\"result\": \"updated\"}"
-              } else {
-                StatusCodes.MethodNotAllowed -> "{\"result\": \"denied\"}"
-              }
+              Store.update(id, offer)
             }
           }
         }

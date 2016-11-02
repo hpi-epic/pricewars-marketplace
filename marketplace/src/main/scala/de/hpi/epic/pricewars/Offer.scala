@@ -1,8 +1,5 @@
 package de.hpi.epic.pricewars
 
-import spray.httpx.SprayJsonSupport
-import spray.json._
-
 /**
   * Created by Jan on 01.11.2016.
   */
