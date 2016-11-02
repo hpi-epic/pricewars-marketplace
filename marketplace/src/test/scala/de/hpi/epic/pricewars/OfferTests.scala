@@ -9,7 +9,7 @@ import JSONConverter._
 /**
   * Created by Jan on 02.11.2016.
   */
-class MarketplaceTest extends Specification with BeforeAfterAll with Specs2RouteTest with MarketplaceService {
+class OfferTests extends Specification with BeforeAfterAll with Specs2RouteTest with MarketplaceService {
   sequential
 
   def actorRefFactory = system
@@ -20,11 +20,11 @@ class MarketplaceTest extends Specification with BeforeAfterAll with Specs2Route
   )
 
   def beforeAll() {
-    Store.add(offers(0))
+    OfferStore.add(offers(0))
   }
 
   def afterAll(): Unit = {
-    Store.clear()
+    OfferStore.clear()
   }
 
   "The marketplace" should {
@@ -39,7 +39,7 @@ class MarketplaceTest extends Specification with BeforeAfterAll with Specs2Route
 
     "insert a new offer" in {
       Post("/offers", offers(1)) ~> route ~> check {
-        response.status should be equalTo OK
+        response.status should be equalTo Created
         response.entity should not be equalTo(None)
         responseAs[Offer] must be equalTo offers(1)
       }
@@ -89,7 +89,7 @@ class MarketplaceTest extends Specification with BeforeAfterAll with Specs2Route
 
     "delete an existing offer by id" in {
       Delete("/offers/1") ~> route ~> check {
-        response.status should be equalTo OK
+        response.status should be equalTo NoContent
         response.entity should not be equalTo(None)
         responseAs[String] must be equalTo """{"result": "deleted"}"""
       }

@@ -22,14 +22,14 @@ trait MarketplaceService extends HttpService {
     path("offers") {
       get {
         complete {
-          Store.get
+          OfferStore.get
         }
       } ~
       post {
         entity(as[Offer]) { offer =>
           detach() {
             complete {
-              Store.add(offer)
+              OfferStore.add(offer).successHttpCode(StatusCodes.Created)
             }
           }
         }
@@ -38,14 +38,14 @@ trait MarketplaceService extends HttpService {
     path("offers" / LongNumber) { id =>
       get {
         complete {
-          Store.get(id)
+          OfferStore.get(id)
         }
       } ~
       delete {
         complete {
-          val res = Store.remove(id)
+          val res = OfferStore.remove(id)
           res match {
-            case Success(v) => """{"result": "deleted"}"""
+            case Success(v) => StatusCodes.NoContent -> """{"result": "deleted"}"""
             case f : Failure[Unit] => StatusCode.int2StatusCode(f.code) -> f.toJson.toString()
           }
         }
@@ -54,7 +54,23 @@ trait MarketplaceService extends HttpService {
         entity(as[Offer]) { offer =>
           detach() {
             complete {
-              Store.update(id, offer)
+              OfferStore.update(id, offer)
+            }
+          }
+        }
+      }
+    } ~
+    path("merchants") {
+      get {
+        complete {
+          MerchantStore.get
+        }
+      } ~
+      post {
+        entity(as[Merchant]) { merchant =>
+          detach() {
+            complete {
+              MerchantStore.add(merchant).successHttpCode(StatusCodes.Created)
             }
           }
         }
