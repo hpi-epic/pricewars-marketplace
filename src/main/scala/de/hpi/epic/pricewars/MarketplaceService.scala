@@ -32,8 +32,9 @@ trait MarketplaceService extends HttpService {
     } ~
     path("offers") {
       get {
-        val offer = Store.get()
         complete {
+          println("get")
+          val offer = Store.get()
           offer.toJson.toString()
         }
       } ~
@@ -49,9 +50,24 @@ trait MarketplaceService extends HttpService {
     } ~
     path("offers" / LongNumber) { id =>
       get {
-        val offer = Store.get(id)
         complete {
+          println("single get")
+          //TODO: return single value, not Sequence
+          val offer = Store.get(id)
           offer.toJson.toString()
+        }
+      } ~
+      delete {
+        complete {
+          println("delete")
+          val res = Store.remove(id)
+          //TODO: are these the right return values?
+
+          if (res) {
+            "deleted"
+          } else {
+            StatusCodes.NotFound -> "Your either not allowed or object doesn't exist."
+          }
         }
       }
     }
