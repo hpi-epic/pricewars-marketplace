@@ -64,9 +64,25 @@ trait MarketplaceService extends HttpService {
           //TODO: are these the right return values?
 
           if (res) {
-            "deleted"
+            "{\"result\": \"deleted\"}"
           } else {
-            StatusCodes.NotFound -> "Your either not allowed or object doesn't exist."
+            StatusCodes.MethodNotAllowed -> "{\"result\": \"denied\"}"
+          }
+        }
+      } ~
+      put {
+        entity(as[Offer]) { offer =>
+          detach() {
+            complete {
+              println("put")
+              val result = Store.update(id, offer)
+
+              if (result) {
+                "{\"result\": \"updated\"}"
+              } else {
+                StatusCodes.MethodNotAllowed -> "{\"result\": \"denied\"}"
+              }
+            }
           }
         }
       }

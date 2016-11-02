@@ -21,6 +21,19 @@ object Store {
     updated.offer_id.get
   }
 
+  def update(id: Long, offer: Offer): Boolean = {
+    db.find(_.offer_id.exists(_ == id)) match {
+      case Some(db_offer) =>
+        println(db_offer)
+        db -= db_offer
+        val updated = offer.copy(offer_id = db_offer.offer_id)
+        db += updated
+        println(updated)
+        true
+      case None => false
+    }
+  }
+
   //TODO: Use Try[Something] instead of Boolean
   def remove(id: Long): Boolean = {
     db.find(_.offer_id.exists(_ == id)) match {
