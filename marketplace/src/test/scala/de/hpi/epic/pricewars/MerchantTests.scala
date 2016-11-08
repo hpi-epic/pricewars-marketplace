@@ -20,7 +20,7 @@ class MerchantTests extends Specification with BeforeAfterAll with Specs2RouteTe
   )
 
   def beforeAll() {
-    MerchantStore.add(merchants(0))
+    MerchantStore.add(merchants.head)
   }
 
   def afterAll(): Unit = {
@@ -29,7 +29,7 @@ class MerchantTests extends Specification with BeforeAfterAll with Specs2RouteTe
 
   "The marketplace" should {
 
-    "return a list containing one offer on startup" in {
+    "return a list containing one merchant on startup" in {
       Get("/merchants") ~> route ~> check {
         response.status should be equalTo OK
         response.entity should not be equalTo(None)
@@ -50,5 +50,40 @@ class MerchantTests extends Specification with BeforeAfterAll with Specs2RouteTe
       }
     }
 
+    "get an existing merchant by id" in {
+      Get("/merchants/1") ~> route  ~> check {
+        response.status should be equalTo OK
+        response.entity should not be equalTo(None)
+        responseAs[Merchant] must be equalTo merchants.head
+      }
+    }
+
+    "return Not Found error for a get on not existing merchant" in {
+      Get("/merchants/3") ~> route  ~> check {
+        response.status should be equalTo NotFound
+        response.entity should not be equalTo(None)
+      }
+    }
+
+    "return Not Found error for a delete on not existing merchant" in {
+      Delete("/merchants/3") ~> route ~> check {
+        response.status should be equalTo NotFound
+        response.entity should not be equalTo(None)
+      }
+    }
+
+    "delete an existing merchant by id" in {
+      Delete("/merchants/1") ~> route ~> check {
+        response.status should be equalTo NoContent
+        response.entity should be equalTo None
+      }
+    }
+
+    "return Not Found error for a delete on not existing merchants" in {
+      Delete("/merchants/3") ~> route ~> check {
+        response.status should be equalTo NotFound
+        response.entity should not be equalTo(None)
+      }
+    }
   }
 }

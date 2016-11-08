@@ -75,6 +75,22 @@ trait MarketplaceService extends HttpService {
           }
         }
       }
+    } ~
+    path("merchants" / LongNumber) { id =>
+      get {
+        complete {
+          MerchantStore.get(id)
+        }
+      } ~
+      delete {
+        complete {
+          val res = MerchantStore.remove(id)
+          res match {
+            case Success(v) => StatusCodes.NoContent
+            case f: Failure[Unit] => StatusCode.int2StatusCode(f.code) -> f.toJson.toString()
+          }
+        }
+      }
     }
   }
 
