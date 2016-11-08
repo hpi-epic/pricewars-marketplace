@@ -54,6 +54,7 @@ trait MarketplaceService extends HttpService {
         entity(as[Offer]) { offer =>
           detach() {
             complete {
+              println(s"updated: $id")
               OfferStore.update(id, offer)
             }
           }
@@ -63,6 +64,9 @@ trait MarketplaceService extends HttpService {
     path("offers" / LongNumber / "buy") { id =>
       post {
         complete {
+          OfferStore.get(id).flatMap(offer => MerchantStore.get(offer.merchant_id.toLong)) match {
+            case Success(merchant) => MerchantConnector.notifyMerchant(merchant, id, 1, 1)
+          }
           println(s"bought: $id")
           StatusCodes.OK -> """{"result": "sold"}"""
         }

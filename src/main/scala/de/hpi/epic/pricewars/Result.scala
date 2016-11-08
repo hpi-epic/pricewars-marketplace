@@ -4,8 +4,19 @@ package de.hpi.epic.pricewars
   * Created by Jan on 02.11.2016.
   */
 trait Result[T] {
+  self =>
   def isSuccess: Boolean
   def isFailure: Boolean = !isSuccess
+
+  def map[A](f: T => A): Result[A] = self match {
+    case Success(value) => Success(f(value))
+    case Failure(msg, code) => Failure(msg, code)
+  }
+
+  def flatMap[A](f: T => Result[A]): Result[A] = self.map(f) match {
+    case Success(s) => s
+    case Failure(msg, code) => Failure(msg, code)
+  }
 }
 
 object Result {
