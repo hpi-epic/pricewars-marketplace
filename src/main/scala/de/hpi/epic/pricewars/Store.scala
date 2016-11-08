@@ -83,6 +83,16 @@ object DatabaseStore {
     }
   }
 
+  def deleteOffers: Result[Long] = {
+    val res = Try(DB localTx { implicit session =>
+      sql"DELETE FROM offers WHERE 1 = 1".executeUpdate()
+    })
+    res match {
+      case scala.util.Success(v) => Success(0)
+      case scala.util.Failure(e) => Failure(e.getMessage, 500)
+    }
+  }
+
   def getOffers: Result[Seq[Offer]] = {
     val res = Try(DB readOnly { implicit session =>
       sql"SELECT offer_id, product_id, merchant_id, amount, price, shipping_time_standard, shipping_time_prime, prime FROM offers"

@@ -20,11 +20,11 @@ class OfferTests extends Specification with BeforeAfterAll with Specs2RouteTest 
   )
 
   def beforeAll() {
-    OfferStore.add(offers(0))
+    DatabaseStore.addOffer(offers(0))
   }
 
   def afterAll(): Unit = {
-    OfferStore.clear()
+    DatabaseStore.deleteOffers()
   }
 
   "The marketplace" should {
