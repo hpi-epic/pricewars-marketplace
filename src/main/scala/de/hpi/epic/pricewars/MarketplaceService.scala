@@ -60,6 +60,14 @@ trait MarketplaceService extends HttpService {
         }
       }
     } ~
+    path("offers" / LongNumber / "buy") { id =>
+      post {
+        complete {
+          println(s"bought: $id")
+          StatusCodes.OK -> """{"result": "sold"}"""
+        }
+      }
+    } ~
     path("merchants") {
       get {
         complete {
