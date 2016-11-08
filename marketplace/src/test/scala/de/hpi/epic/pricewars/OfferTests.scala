@@ -79,7 +79,7 @@ class OfferTests extends Specification with BeforeAfterAll with Specs2RouteTest 
       }
     }
 
-    "return Not Found error for a delete on not existing offer" in {
+    "return Not Found error for a put on not existing offer" in {
       val updated = offers.head.copy(price = 10)
       Put("/offers/3", updated) ~> route ~> check {
         response.status should be equalTo NotFound
