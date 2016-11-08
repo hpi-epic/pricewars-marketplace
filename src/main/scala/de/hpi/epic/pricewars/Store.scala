@@ -34,33 +34,42 @@ object DatabaseStore {
   def setup(): Unit = {
     println("run setup")
     DB localTx { implicit session =>
+      sql"""CREATE TABLE IF NOT EXISTS merchants (
+        merchant_id SERIAL UNIQUE,
+        api_endpoint_url VARCHAR(250) NOT NULL,
+        merchant_name VARCHAR(100) NOT NULL,
+        algorithm_name VARCHAR(100) NOT NULL
+      )""".execute.apply()
       sql"""CREATE TABLE IF NOT EXISTS offers (
         offer_id SERIAL NOT NULL PRIMARY KEY,
         product_id VARCHAR(25) NOT NULL,
-        merchant_id VARCHAR(25) NOT NULL,
+        merchant_id INTEGER NOT NULL REFERENCES merchants ( merchant_id ),
         amount INTEGER not null CHECK (amount >= 0),
         price NUMERIC(11,2) not null,
         shipping_time_standard INTEGER NOT NULL,
         shipping_time_prime INTEGER,
         prime BOOLEAN
-      )""".executeUpdate()
+      )""".execute.apply()
     }
   }
 
   def addOffer(offer: Offer): Result[Offer] = {
-    val id = DB localTx { implicit session =>
+    val res = Try(DB localTx { implicit session =>
       sql"""INSERT INTO offers VALUES (
           DEFAULT,
           ${offer.product_id},
-          ${offer.merchant_id},
+          ${offer.merchant_id.toInt},
           ${offer.amount},
           ${offer.price},
           ${offer.shipping_time.standard},
           ${offer.shipping_time.prime},
           ${offer.prime}
       )""".updateAndReturnGeneratedKey.apply()
+    })
+    res match {
+      case scala.util.Success(id) => Success(offer.copy(offer_id = Some(id)))
+      case scala.util.Failure(e) => Failure(e.getMessage, 500)
     }
-    Success(offer.copy(offer_id = Some(id)))
   }
 
   def deleteOffer(offer_id: Long): Result[Unit] = {
@@ -101,14 +110,12 @@ object DatabaseStore {
 
   def buyOffer(offer_id: Long, price: BigDecimal, amount: Int): Result[Unit] = {
     val res = Try(DB localTx { implicit session =>
-      sql"UPDATE offers SET amount = amount - $amount WHERE offer_id = $offer_id AND price = $price".update().apply()
+      sql"UPDATE offers SET amount = amount - $amount WHERE offer_id = $offer_id AND price <= $price".update().apply()
     })
     res match {
       case scala.util.Success(v) if v == 1 => Success((): Unit)
       case scala.util.Success(v) if v != 1 => Failure("price changed", 409)
-      case scala.util.Failure(e) =>
-        println(e.getMessage)
-        Failure("out of stock", 410)
+      case scala.util.Failure(_) => Failure("out of stock", 410)
     }
   }
 
@@ -116,7 +123,7 @@ object DatabaseStore {
     val res = Try { DB localTx { implicit session =>
       sql"""UPDATE offers SET
         product_id = ${offer.product_id},
-        merchant_id = ${offer.merchant_id},
+        merchant_id = ${offer.merchant_id.toInt},
         amount = ${offer.amount},
         price = ${offer.price},
         shipping_time_standard = ${offer.shipping_time.standard},
@@ -149,11 +156,17 @@ object DatabaseStore {
       case scala.util.Failure(e) => Failure(e.getMessage, 500)
     }
   }
-}
 
-object OfferStore extends Store[Offer] {
-  override def setKey(key: Long, value: Offer): Offer = value.copy(offer_id = Some(key))
-  override def getKey(value: Offer): Long = value.offer_id.getOrElse(-2)
+  def addMerchant(merchant: Merchant): Result[Merchant] = {
+    val res = Try( DB localTx { implicit session =>
+      sql"INSERT INTO merchants VALUES (DEFAULT, ${merchant.api_endpoint_url}, ${merchant.merchant_name}, ${merchant.algorithm_name})"
+        .updateAndReturnGeneratedKey.apply()
+    })
+    res match {
+      case scala.util.Success(id) => Success(merchant.copy(merchant_id = Some(id.toString)))
+      case scala.util.Failure(e) => Failure(e.getMessage, 500)
+    }
+  }
 }
 
 object MerchantStore extends Store[Merchant] {

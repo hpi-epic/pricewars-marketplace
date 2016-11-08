@@ -16,7 +16,7 @@ case class Offer ( offer_id: Option[Long],
 object Offer extends SQLSyntaxSupport[Offer] {
   override val tableName = "offers"
   def apply(rs: WrappedResultSet) = new Offer(
-    Some(rs.long("offer_id")), rs.string("product_id"), rs.string("merchant_id"), rs.int("amount"),
+    Some(rs.long("offer_id")), rs.string("product_id"), rs.int("merchant_id").toString, rs.int("amount"),
     rs.bigDecimal("price"), ShippingTime(rs), rs.boolean("prime"))
 }
 

@@ -81,7 +81,7 @@ trait MarketplaceService extends HttpService {
         entity(as[Merchant]) { merchant =>
           detach() {
             complete {
-              MerchantStore.add(merchant).successHttpCode(StatusCodes.Created)
+              DatabaseStore.addMerchant(merchant).successHttpCode(StatusCodes.Created)
             }
           }
         }
