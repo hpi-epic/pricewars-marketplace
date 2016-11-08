@@ -15,8 +15,8 @@ class OfferTests extends Specification with BeforeAfterAll with Specs2RouteTest 
   def actorRefFactory = system
 
   private val offers = Seq(
-    Offer(Some(1), "Hana", "SAP", 5, 12000000.0f, 100, false),
-    Offer(Some(2), "MySQL", "Oracle", 100, 0, 1, true)
+    Offer(Some(1), "Hana", "SAP", 5, 12000000.0f, ShippingTime(100), false),
+    Offer(Some(2), "MySQL", "Oracle", 100, 0, ShippingTime(2, Some(1)), true)
   )
 
   def beforeAll() {

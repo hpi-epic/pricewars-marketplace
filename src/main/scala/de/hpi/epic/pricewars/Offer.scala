@@ -5,8 +5,11 @@ package de.hpi.epic.pricewars
   */
 case class Offer ( offer_id: Option[Long],
                    product_id: String,
-                   seller_id: String,
+                   merchant_id: String,
                    amount: Int,
-                   price: Float,
-                   shipping_time: Int,
-                   prime: Boolean )
+                   price: BigDecimal,
+                   shipping_time: ShippingTime,
+                   prime: Boolean = false )
+
+case class ShippingTime ( standard: Int,
+                          prime: Option[Int] = None )
