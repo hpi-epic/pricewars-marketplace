@@ -43,11 +43,11 @@ object DatabaseStore {
         shipping_time_standard INTEGER NOT NULL,
         shipping_time_prime INTEGER,
         prime BOOLEAN
-      )"""
+      )""".executeUpdate()
     }
   }
 
-  def addOffer(offer: Offer): Offer = {
+  def addOffer(offer: Offer): Result[Offer] = {
     val id = DB localTx { implicit session =>
       sql"""INSERT INTO offers VALUES (
           DEFAULT,
@@ -60,7 +60,7 @@ object DatabaseStore {
           ${offer.prime}
       )""".updateAndReturnGeneratedKey.apply()
     }
-    offer.copy(offer_id = Some(id))
+    Success(offer.copy(offer_id = Some(id)))
   }
 
   def deleteOffer(offer_id: Long): Result[Unit] = {
@@ -101,12 +101,14 @@ object DatabaseStore {
 
   def buyOffer(offer_id: Long, price: BigDecimal, amount: Int): Result[Unit] = {
     val res = Try(DB localTx { implicit session =>
-      sql"UPDATE offers SET amount = amount - $amount WHERE id = $offer_id AND price = $price".update().apply()
+      sql"UPDATE offers SET amount = amount - $amount WHERE offer_id = $offer_id AND price = $price".update().apply()
     })
     res match {
       case scala.util.Success(v) if v == 1 => Success((): Unit)
       case scala.util.Success(v) if v != 1 => Failure("price changed", 409)
-      case scala.util.Failure(_) => Failure("out of stock", 410)
+      case scala.util.Failure(e) =>
+        println(e.getMessage)
+        Failure("out of stock", 410)
     }
   }
 

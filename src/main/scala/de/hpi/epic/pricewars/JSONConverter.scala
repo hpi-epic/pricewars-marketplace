@@ -7,8 +7,8 @@ import spray.json.DefaultJsonProtocol
   * Created by Jan on 01.11.2016.
   */
 object JSONConverter extends DefaultJsonProtocol with SprayJsonSupport {
-  implicit val shippingTimeFormat = jsonFormat2(ShippingTime)
-  implicit val offerFormat = jsonFormat7(Offer)
+  implicit val shippingTimeFormat = jsonFormat2(ShippingTime.apply)
+  implicit val offerFormat = jsonFormat7(Offer.apply)
   implicit val merchantFormat = jsonFormat4(Merchant)
   //TODO: write generic formatter
   implicit val offerFailureFormat = jsonFormat2(Failure[Offer])
