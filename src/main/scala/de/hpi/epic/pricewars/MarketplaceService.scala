@@ -76,6 +76,18 @@ trait MarketplaceService extends HttpService {
         }
       }
     } ~
+    path("offers" / LongNumber / "restock") { id =>
+      patch {
+        entity(as[OfferPatch]) { offer =>
+          complete {
+            offer.amount match {
+              case Some(amount) => DatabaseStore.restockOffer(id, amount)
+              case _ => StatusCodes.InternalServerError -> "no amount specified"
+            }
+          }
+        }
+      }
+    } ~
     path("merchants") {
       get {
         complete {

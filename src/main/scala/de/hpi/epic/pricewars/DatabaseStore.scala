@@ -32,7 +32,7 @@ object DatabaseStore {
       )""".execute.apply()
       sql"""CREATE TABLE IF NOT EXISTS offers (
         offer_id SERIAL NOT NULL PRIMARY KEY,
-        product_id VARCHAR(25) NOT NULL,
+        product_id INTEGER NOT NULL,
         merchant_id INTEGER NOT NULL REFERENCES merchants ( merchant_id ),
         amount INTEGER not null CHECK (amount >= 0),
         price NUMERIC(11,2) not null,
@@ -48,7 +48,7 @@ object DatabaseStore {
       sql"""INSERT INTO offers VALUES (
           DEFAULT,
           ${offer.product_id},
-          ${offer.merchant_id.toInt},
+          ${offer.merchant_id},
           ${offer.amount},
           ${offer.price},
           ${offer.shipping_time.standard},
@@ -113,7 +113,7 @@ object DatabaseStore {
     val res = Try { DB localTx { implicit session =>
       sql"""UPDATE offers SET
         product_id = ${offer.product_id},
-        merchant_id = ${offer.merchant_id.toInt},
+        merchant_id = ${offer.merchant_id},
         amount = ${offer.amount},
         price = ${offer.price},
         shipping_time_standard = ${offer.shipping_time.standard},
@@ -143,7 +143,7 @@ object DatabaseStore {
     res match {
       case scala.util.Success(Some(v)) => Success(v)
       case scala.util.Success(None) => Failure("item not found", 404)
-      case scala.util.Failure(e) => Failure(e.getMessage, 500)
+      case scala.util.Failure(e) => Failure(e.getMessage, 417)
     }
   }
 
@@ -153,7 +153,7 @@ object DatabaseStore {
         .updateAndReturnGeneratedKey.apply()
     })
     res match {
-      case scala.util.Success(id) => Success(merchant.copy(merchant_id = Some(id.toString)))
+      case scala.util.Success(id) => Success(merchant.copy(merchant_id = Some(id)))
       case scala.util.Failure(e) => Failure(e.getMessage, 500)
     }
   }
