@@ -9,22 +9,19 @@ import JSONConverter._
 /**
   * Created by Jan on 02.11.2016.
   */
-class MerchantTests extends Specification with BeforeAfterAll with Specs2RouteTest with MarketplaceService {
+class MerchantTests extends Specification with BeforeAfterEach with Specs2RouteTest with MarketplaceService {
   sequential
 
   def actorRefFactory = system
 
   private val merchants = Seq(
-    Merchant("testvm1:8080", "testuser1", "algo", Some("1")),
-    Merchant("testvm2:8090", "testuser2", "rythm", Some("2"))
+    Merchant("testvm1:8080", "testuser1", "algo", Some(1)),
+    Merchant("testvm2:8090", "testuser2", "rythm", Some(2))
   )
 
-  def beforeAll() {
+  override def before: Unit = {
+    super.before
     DatabaseStore.addMerchant(merchants.head)
-  }
-
-  def afterAll(): Unit = {
-    DatabaseStore.deleteMerchants
   }
 
   "The marketplace" should {

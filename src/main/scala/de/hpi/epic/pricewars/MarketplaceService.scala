@@ -43,19 +43,18 @@ trait MarketplaceService extends HttpService {
       } ~
       delete {
         complete {
-          /*val res = DatabaseStore.deleteOffer(id)
+          val res = DatabaseStore.deleteOffer(id)
           res match {
-            case Success(v) => StatusCodes.NoContent -> """{"result": "deleted"}"""
-            case f : Failure[Unit] => StatusCode.int2StatusCode(f.code) -> f.toJson.toString()
-          }*/
-          DatabaseStore.deleteOffer(id).successHttpCode(StatusCodes.NoContent)
+            case Success(v) => StatusCodes.NoContent
+            case f: Failure[Unit] => StatusCode.int2StatusCode(f.code) -> f.toJson.toString()
+          }
         }
       } ~
       put {
         entity(as[Offer]) { offer =>
           detach() {
             complete {
-              println(s"updated: $id")
+              // println(s"updated: $id")
               DatabaseStore.updateOffer(id, offer)
             }
           }

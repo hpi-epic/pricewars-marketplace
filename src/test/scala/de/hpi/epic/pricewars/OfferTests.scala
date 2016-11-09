@@ -9,22 +9,26 @@ import JSONConverter._
 /**
   * Created by Jan on 02.11.2016.
   */
-class OfferTests extends Specification with BeforeAfterAll with Specs2RouteTest with MarketplaceService {
+class OfferTests extends Specification with BeforeAfterEach with Specs2RouteTest with MarketplaceService {
   sequential
 
   def actorRefFactory = system
 
   private val offers = Seq(
-    Offer(Some(1), "Hana", "SAP", 5, 12000000.0f, ShippingTime(100), false),
-    Offer(Some(2), "MySQL", "Oracle", 100, 0, ShippingTime(2, Some(1)), true)
+    Offer(Some(1), 0, 1, 5, 12000000.0f, ShippingTime(100), false),
+    Offer(Some(2), 1, 2, 100, 0, ShippingTime(2, Some(1)), true)
   )
 
-  def beforeAll() {
-    DatabaseStore.addOffer(offers(0))
-  }
+  private val merchants = Seq(
+    Merchant("testvm1:8080", "testuser1", "algo", Some(1)),
+    Merchant("testvm2:8090", "testuser2", "rythm", Some(2))
+  )
 
-  def afterAll(): Unit = {
-    DatabaseStore.deleteOffers
+  override def before: Unit = {
+    super.before
+    DatabaseStore.addMerchant(merchants.head)
+    DatabaseStore.addMerchant(merchants(1))
+    DatabaseStore.addOffer(offers.head)
   }
 
   "The marketplace" should {
@@ -90,8 +94,7 @@ class OfferTests extends Specification with BeforeAfterAll with Specs2RouteTest 
     "delete an existing offer by id" in {
       Delete("/offers/1") ~> route ~> check {
         response.status should be equalTo NoContent
-        response.entity should not be equalTo(None)
-        responseAs[String] must be equalTo """{"result": "deleted"}"""
+        response.entity should be equalTo None
       }
     }
 

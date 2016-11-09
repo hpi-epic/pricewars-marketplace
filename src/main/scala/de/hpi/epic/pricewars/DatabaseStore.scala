@@ -22,7 +22,6 @@ object DatabaseStore {
   implicit val session = AutoSession
 
   def setup(): Unit = {
-    println("run setup")
     DB localTx { implicit session =>
       sql"""CREATE TABLE IF NOT EXISTS merchants (
         merchant_id SERIAL UNIQUE,
@@ -34,8 +33,8 @@ object DatabaseStore {
         offer_id SERIAL NOT NULL PRIMARY KEY,
         product_id INTEGER NOT NULL,
         merchant_id INTEGER NOT NULL REFERENCES merchants ( merchant_id ),
-        amount INTEGER not null CHECK (amount >= 0),
-        price NUMERIC(11,2) not null,
+        amount INTEGER NOT NULL CHECK (amount >= 0),
+        price NUMERIC(11,2) NOT NULL,
         shipping_time_standard INTEGER NOT NULL,
         shipping_time_prime INTEGER,
         prime BOOLEAN
@@ -63,7 +62,7 @@ object DatabaseStore {
   }
 
   def deleteOffer(offer_id: Long): Result[Unit] = {
-    val res = Try(DB readOnly { implicit session =>
+    val res = Try(DB localTx { implicit session =>
       sql"DELETE FROM offers WHERE offer_id = $offer_id".executeUpdate().apply()
     })
     res match {
@@ -110,8 +109,9 @@ object DatabaseStore {
   }
 
   def updateOffer(offer_id: Long, offer: Offer): Result[Offer] = {
-    val res = Try { DB localTx { implicit session =>
-      sql"""UPDATE offers SET
+    val res = Try {
+      DB localTx { implicit session =>
+        sql"""UPDATE offers SET
         product_id = ${offer.product_id},
         merchant_id = ${offer.merchant_id},
         amount = ${offer.amount},
@@ -120,11 +120,12 @@ object DatabaseStore {
         shipping_time_prime = ${offer.shipping_time.prime},
         prime = ${offer.prime}
         WHERE offer_id = $offer_id""".executeUpdate().apply()
-      sql"""SELECT offer_id, product_id, merchant_id, amount, price, shipping_time_standard, shipping_time_prime, prime
+        sql"""SELECT offer_id, product_id, merchant_id, amount, price, shipping_time_standard, shipping_time_prime, prime
         FROM offers
         WHERE offer_id = $offer_id"""
-        .map(rs => Offer(rs)).list.apply().headOption
-    }}
+          .map(rs => Offer(rs)).list.apply().headOption
+      }
+    }
     res match {
       case scala.util.Success(Some(v)) => Success(v)
       case scala.util.Success(None) => Failure("item not found", 404)
@@ -133,13 +134,15 @@ object DatabaseStore {
   }
 
   def restockOffer(offer_id: Long, amount: Int): Result[Offer] = {
-    val res = Try { DB localTx { implicit session =>
-      sql"UPDATE offers SET amount = amount + $amount WHERE offer_id = $offer_id".executeUpdate().apply()
-      sql"""SELECT offer_id, product_id, merchant_id, amount, price, shipping_time_standard, shipping_time_prime, prime
+    val res = Try {
+      DB localTx { implicit session =>
+        sql"UPDATE offers SET amount = amount + $amount WHERE offer_id = $offer_id".executeUpdate().apply()
+        sql"""SELECT offer_id, product_id, merchant_id, amount, price, shipping_time_standard, shipping_time_prime, prime
         FROM offers
         WHERE offer_id = $offer_id"""
-        .map(rs => Offer(rs)).list.apply().headOption
-    }}
+          .map(rs => Offer(rs)).list.apply().headOption
+      }
+    }
     res match {
       case scala.util.Success(Some(v)) => Success(v)
       case scala.util.Success(None) => Failure("item not found", 404)
@@ -148,7 +151,7 @@ object DatabaseStore {
   }
 
   def addMerchant(merchant: Merchant): Result[Merchant] = {
-    val res = Try( DB localTx { implicit session =>
+    val res = Try(DB localTx { implicit session =>
       sql"INSERT INTO merchants VALUES (DEFAULT, ${merchant.api_endpoint_url}, ${merchant.merchant_name}, ${merchant.algorithm_name})"
         .updateAndReturnGeneratedKey.apply()
     })
@@ -159,22 +162,12 @@ object DatabaseStore {
   }
 
   def deleteMerchant(merchant_id: Long): Result[Unit] = {
-    val res = Try(DB readOnly { implicit session =>
+    val res = Try(DB localTx { implicit session =>
       sql"DELETE FROM merchants WHERE merchant_id = $merchant_id".executeUpdate().apply()
     })
     res match {
       case scala.util.Success(v) if v == 1 => Success((): Unit)
       case scala.util.Success(v) if v != 1 => Failure(s"No merchant with id $merchant_id", 404)
-      case scala.util.Failure(e) => Failure(e.getMessage, 500)
-    }
-  }
-
-  def deleteMerchants: Result[Long] = {
-    val res = Try(DB localTx { implicit session =>
-      sql"DELETE FROM merchants WHERE 1 = 1".executeUpdate().apply()
-    })
-    res match {
-      case scala.util.Success(v) => Success(0)
       case scala.util.Failure(e) => Failure(e.getMessage, 500)
     }
   }
@@ -201,6 +194,13 @@ object DatabaseStore {
       case scala.util.Success(Some(v)) => Success(v)
       case scala.util.Success(None) => Failure(s"No merchant with key $merchant_id found", 404)
       case scala.util.Failure(e) => Failure(e.getMessage, 500)
+    }
+  }
+
+  def reset(): Unit = {
+    DB localTx { implicit session =>
+      sql"""DROP TABLE IF EXISTS offers""".execute.apply()
+      sql"""DROP TABLE IF EXISTS merchants""".execute.apply()
     }
   }
 }
