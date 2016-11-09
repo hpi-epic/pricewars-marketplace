@@ -74,7 +74,7 @@ object DatabaseStore {
 
   def deleteOffer(offer_id: Long): Result[Unit] = {
     val res = Try(DB readOnly { implicit session =>
-      sql"DELETE FROM offers WHERE offer_id = $offer_id".executeUpdate()
+      sql"DELETE FROM offers WHERE offer_id = $offer_id".executeUpdate().apply()
     })
     res match {
       case scala.util.Success(v) if v == 1 => Success((): Unit)
@@ -85,7 +85,7 @@ object DatabaseStore {
 
   def deleteOffers: Result[Long] = {
     val res = Try(DB localTx { implicit session =>
-      sql"DELETE FROM offers WHERE 1 = 1".executeUpdate()
+      sql"DELETE FROM offers WHERE 1 = 1".executeUpdate().apply()
     })
     res match {
       case scala.util.Success(v) => Success(0)
@@ -120,7 +120,7 @@ object DatabaseStore {
 
   def buyOffer(offer_id: Long, price: BigDecimal, amount: Int): Result[Unit] = {
     val res = Try(DB localTx { implicit session =>
-      sql"UPDATE offers SET amount = amount - $amount WHERE offer_id = $offer_id AND price <= $price".update().apply()
+      sql"UPDATE offers SET amount = amount - $amount WHERE offer_id = $offer_id AND price <= $price".executeUpdate().apply()
     })
     res match {
       case scala.util.Success(v) if v == 1 => Success((): Unit)
@@ -139,7 +139,7 @@ object DatabaseStore {
         shipping_time_standard = ${offer.shipping_time.standard},
         shipping_time_prime = ${offer.shipping_time.prime},
         prime = ${offer.prime}
-        WHERE offer_id = $offer_id"""
+        WHERE offer_id = $offer_id""".executeUpdate().apply()
       sql"""SELECT offer_id, product_id, merchant_id, amount, price, shipping_time_standard, shipping_time_prime, prime
         FROM offers
         WHERE offer_id = $offer_id"""
@@ -154,7 +154,7 @@ object DatabaseStore {
 
   def restockOffer(offer_id: Long, amount: Int): Result[Offer] = {
     val res = Try { DB localTx { implicit session =>
-      sql"UPDATE offers SET amount = amount + $amount WHERE offer_id = $offer_id".executeUpdate()
+      sql"UPDATE offers SET amount = amount + $amount WHERE offer_id = $offer_id".executeUpdate().apply()
       sql"""SELECT offer_id, product_id, merchant_id, amount, price, shipping_time_standard, shipping_time_prime, prime
         FROM offers
         WHERE offer_id = $offer_id"""
