@@ -21,16 +21,6 @@ object DatabaseStore {
   ConnectionPool.singleton(s"jdbc:postgresql://$host:$port/$databaseName", username, password)
   implicit val session = AutoSession
 
-  /*
-  offer_id: Option[Long],
-                   product_id: String,
-                   merchant_id: String,
-                   amount: Int,
-                   price: BigDecimal,
-                   shipping_time: ShippingTime,
-                   prime: Boolean = false
-   */
-
   def setup(): Unit = {
     println("run setup")
     DB localTx { implicit session =>
@@ -74,7 +64,7 @@ object DatabaseStore {
 
   def deleteOffer(offer_id: Long): Result[Unit] = {
     val res = Try(DB readOnly { implicit session =>
-      sql"DELETE FROM offers WHERE offer_id = $offer_id".executeUpdate()
+      sql"DELETE FROM offers WHERE offer_id = $offer_id".executeUpdate().apply()
     })
     res match {
       case scala.util.Success(v) if v == 1 => Success((): Unit)
@@ -85,7 +75,7 @@ object DatabaseStore {
 
   def getOffers: Result[Seq[Offer]] = {
     val res = Try(DB readOnly { implicit session =>
-      sql"SELECT offer_id, product_id, merchant_id, amount, price, shipping_time_standard, shipping_time_prime, prime FROM offers"
+      sql"SELECT offer_id, product_id, merchant_id, amount, price, shipping_time_standard, shipping_time_prime, prime FROM offers WHERE amount > 0"
         .map(rs => Offer(rs)).list.apply()
     })
     res match {
@@ -110,11 +100,11 @@ object DatabaseStore {
 
   def buyOffer(offer_id: Long, price: BigDecimal, amount: Int): Result[Unit] = {
     val res = Try(DB localTx { implicit session =>
-      sql"UPDATE offers SET amount = amount - $amount WHERE offer_id = $offer_id AND price <= $price".update().apply()
+      sql"UPDATE offers SET amount = amount - $amount WHERE offer_id = $offer_id AND price <= $price".executeUpdate().apply()
     })
     res match {
       case scala.util.Success(v) if v == 1 => Success((): Unit)
-      case scala.util.Success(v) if v != 1 => Failure("price changed", 409)
+      case scala.util.Success(v) if v != 1 => Failure("price changed or product not found", 409) // TODO: Check why the update failed
       case scala.util.Failure(_) => Failure("out of stock", 410)
     }
   }
@@ -129,7 +119,7 @@ object DatabaseStore {
         shipping_time_standard = ${offer.shipping_time.standard},
         shipping_time_prime = ${offer.shipping_time.prime},
         prime = ${offer.prime}
-        WHERE offer_id = $offer_id"""
+        WHERE offer_id = $offer_id""".executeUpdate().apply()
       sql"""SELECT offer_id, product_id, merchant_id, amount, price, shipping_time_standard, shipping_time_prime, prime
         FROM offers
         WHERE offer_id = $offer_id"""
@@ -144,7 +134,7 @@ object DatabaseStore {
 
   def restockOffer(offer_id: Long, amount: Int): Result[Offer] = {
     val res = Try { DB localTx { implicit session =>
-      sql"UPDATE offers SET amount = amount + $amount WHERE offer_id = $offer_id".executeUpdate()
+      sql"UPDATE offers SET amount = amount + $amount WHERE offer_id = $offer_id".executeUpdate().apply()
       sql"""SELECT offer_id, product_id, merchant_id, amount, price, shipping_time_standard, shipping_time_prime, prime
         FROM offers
         WHERE offer_id = $offer_id"""
@@ -167,53 +157,50 @@ object DatabaseStore {
       case scala.util.Failure(e) => Failure(e.getMessage, 500)
     }
   }
-}
 
-object MerchantStore extends Store[Merchant] {
-  override def setKey(key: Long, value: Merchant): Merchant = value.copy(merchant_id = Some(key.toString))
-  override def getKey(value: Merchant): Long = value.merchant_id.map(_.toLong).getOrElse(-2)
-}
-
-trait Store[T] {
-  private var counter = 0;
-  private val db = mutable.ListBuffer.empty[T]
-  def setKey(key: Long, value: T): T
-  def getKey(value: T): Long
-
-  def get: Result[Seq[T]] = Success(db)
-  def get(key: Long): Result[T] = db.find(getKey(_) == key) match {
-    case Some(value) => Success(value)
-    case None => Failure(s"No object with key $key found", 404)
-  }
-
-  def add(value: T): Result[T] = {
-    counter = counter + 1
-    val updated = setKey(counter, value)
-    db += updated
-    Success(updated)
-  }
-
-  def update(key: Long, value: T): Result[T] = {
-    db.find(getKey(_) == key) match {
-      case Some(db_value) =>
-        db -= db_value
-        val updated = setKey(key, value)
-        db += updated
-        Success(updated)
-      case None => Failure(s"No object with key $key found", 404)
+  def deleteMerchant(merchant_id: Long): Result[Unit] = {
+    val res = Try(DB readOnly { implicit session =>
+      sql"DELETE FROM merchants WHERE merchant_id = $merchant_id".executeUpdate().apply()
+    })
+    res match {
+      case scala.util.Success(v) if v == 1 => Success((): Unit)
+      case scala.util.Success(v) if v != 1 => Failure(s"No merchant with id $merchant_id", 404)
+      case scala.util.Failure(e) => Failure(e.getMessage, 500)
     }
   }
 
-  def remove(key: Long): Result[Unit] = {
-    db.find(getKey(_) == key) match {
-      case Some(value) =>
-        db -= value
-        Success()
-      case None => Failure(s"No object with id $key found", 404)
+  def deleteMerchants: Result[Long] = {
+    val res = Try(DB localTx { implicit session =>
+      sql"DELETE FROM merchants WHERE 1 = 1".executeUpdate().apply()
+    })
+    res match {
+      case scala.util.Success(v) => Success(0)
+      case scala.util.Failure(e) => Failure(e.getMessage, 500)
     }
   }
 
-  def clear() = {
-    db.clear()
+  def getMerchants: Result[Seq[Merchant]] = {
+    val res = Try(DB readOnly { implicit session =>
+      sql"SELECT merchant_id, api_endpoint_url, merchant_name, algorithm_name FROM merchants"
+        .map(rs => Merchant(rs)).list.apply()
+    })
+    res match {
+      case scala.util.Success(v) => Success(v)
+      case scala.util.Failure(e) => Failure(e.getMessage, 500)
+    }
+  }
+
+  def getMerchant(merchant_id: Long): Result[Merchant] = {
+    val res = Try(DB readOnly { implicit session =>
+      sql"""SELECT merchant_id, api_endpoint_url, merchant_name, algorithm_name
+        FROM merchants
+        WHERE merchant_id = $merchant_id"""
+        .map(rs => Merchant(rs)).list.apply().headOption
+    })
+    res match {
+      case scala.util.Success(Some(v)) => Success(v)
+      case scala.util.Success(None) => Failure(s"No merchant with key $merchant_id found", 404)
+      case scala.util.Failure(e) => Failure(e.getMessage, 500)
+    }
   }
 }
