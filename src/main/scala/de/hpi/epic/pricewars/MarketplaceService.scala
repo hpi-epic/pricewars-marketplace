@@ -63,18 +63,22 @@ trait MarketplaceService extends HttpService {
     } ~
     path("offers" / LongNumber / "buy") { id =>
       post {
-        complete {
-          /*OfferStore.get(id).flatMap(offer => MerchantStore.get(offer.merchant_id.toLong)) match {
-            case Success(merchant) => MerchantConnector.notifyMerchant(merchant, id, 1, 1)
-          }*/
-          DatabaseStore.buyOffer(id, BigDecimal(12), 2)
+        entity(as[BuyRequest]) { buyRequest =>
+          detach() {
+            complete {
+              DatabaseStore.getOffer(id).flatMap(offer => DatabaseStore.getMerchant(offer.merchant_id.toLong)) match {
+                case Success(merchant) => MerchantConnector.notifyMerchant(merchant, id, buyRequest.amount, buyRequest.price)
+              }
+              DatabaseStore.buyOffer(id, buyRequest.price, buyRequest.amount).successHttpCode(StatusCodes.NoContent)
+            }
+          }
         }
       }
     } ~
     path("merchants") {
       get {
         complete {
-          MerchantStore.get
+          DatabaseStore.getMerchants
         }
       } ~
       post {
@@ -90,12 +94,12 @@ trait MarketplaceService extends HttpService {
     path("merchants" / LongNumber) { id =>
       get {
         complete {
-          MerchantStore.get(id)
+          DatabaseStore.getMerchant(id)
         }
       } ~
       delete {
         complete {
-          val res = MerchantStore.remove(id)
+          val res = DatabaseStore.deleteMerchant(id)
           res match {
             case Success(v) => StatusCodes.NoContent
             case f: Failure[Unit] => StatusCode.int2StatusCode(f.code) -> f.toJson.toString()
