@@ -20,11 +20,11 @@ class MerchantTests extends Specification with BeforeAfterAll with Specs2RouteTe
   )
 
   def beforeAll() {
-    MerchantStore.add(merchants.head)
+    DatabaseStore.addMerchant(merchants.head)
   }
 
   def afterAll(): Unit = {
-    MerchantStore.clear()
+    DatabaseStore.deleteMerchants
   }
 
   "The marketplace" should {

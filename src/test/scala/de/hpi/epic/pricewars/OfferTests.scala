@@ -24,6 +24,7 @@ class OfferTests extends Specification with BeforeAfterAll with Specs2RouteTest 
   }
 
   def afterAll(): Unit = {
+    DatabaseStore.deleteOffers
   }
 
   "The marketplace" should {
