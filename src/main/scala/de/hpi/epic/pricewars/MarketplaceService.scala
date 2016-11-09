@@ -43,11 +43,12 @@ trait MarketplaceService extends HttpService {
       } ~
       delete {
         complete {
-          val res = DatabaseStore.deleteOffer(id)
+          /*val res = DatabaseStore.deleteOffer(id)
           res match {
             case Success(v) => StatusCodes.NoContent -> """{"result": "deleted"}"""
             case f : Failure[Unit] => StatusCode.int2StatusCode(f.code) -> f.toJson.toString()
-          }
+          }*/
+          DatabaseStore.deleteOffer(id).successHttpCode(StatusCodes.NoContent)
         }
       } ~
       put {
