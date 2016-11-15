@@ -21,8 +21,10 @@ trait MarketplaceService extends HttpService {
   val route = respondWithMediaType(MediaTypes.`application/json`) {
     path("offers") {
       get {
-        complete {
-          DatabaseStore.getOffers
+        parameter('product_id.as[Long]?) { product_id =>
+          complete {
+            DatabaseStore.getOffers(product_id)
+          }
         }
       } ~
       post {
@@ -54,7 +56,6 @@ trait MarketplaceService extends HttpService {
         entity(as[Offer]) { offer =>
           detach() {
             complete {
-              // println(s"updated: $id")
               DatabaseStore.updateOffer(id, offer)
             }
           }

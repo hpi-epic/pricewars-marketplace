@@ -72,10 +72,13 @@ object DatabaseStore {
     }
   }
 
-  def getOffers: Result[Seq[Offer]] = {
+  def getOffers(product_id: Option[Long]): Result[Seq[Offer]] = {
     val res = Try(DB readOnly { implicit session =>
-      sql"SELECT offer_id, product_id, merchant_id, amount, price, shipping_time_standard, shipping_time_prime, prime FROM offers WHERE amount > 0"
-        .map(rs => Offer(rs)).list.apply()
+      val sql = product_id match {
+        case Some(id) => sql"SELECT offer_id, product_id, merchant_id, amount, price, shipping_time_standard, shipping_time_prime, prime FROM offers WHERE amount > 0 AND product_id = $id"
+        case None => sql"SELECT offer_id, product_id, merchant_id, amount, price, shipping_time_standard, shipping_time_prime, prime FROM offers WHERE amount > 0"
+      }
+      sql.map(rs => Offer(rs)).list.apply()
     })
     res match {
       case scala.util.Success(v) => Success(v)
