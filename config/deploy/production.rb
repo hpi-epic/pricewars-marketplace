@@ -1,5 +1,5 @@
 role :www, %w(deployer@vpn.framsteg.de)
-server "vpn.framsteg.d", user: "deployer", roles: %w(www)
+server "vpn.framsteg.de", user: "deployer", roles: %w(www)
 
 # uncomment in case of travis, capistrano will have its own
 set :ssh_options, keys: ["config/deploy_id_rsa"] if File.exist?("config/deploy_id_rsa")
