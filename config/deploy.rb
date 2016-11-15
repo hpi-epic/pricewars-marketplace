@@ -51,10 +51,10 @@ namespace :deploy do
   task :install_tomcat_war do
     on roles :all do
       within release_path do
-        execute "sudo sbt package"
+        execute "cd #{release_path} && sudo sbt package"
         execute "sudo service tomcat7 stop"
         execute "sudo rm -rf /var/lib/tomcat7/webapps/marketplace"
-        execute "sudo mv target/scala-2.11/marketplace_2.11-1.0.war  /var/lib/tomcat7/webapps/marketplace.war"
+        execute "sudo mv #{release_path}/target/scala-2.11/marketplace_2.11-1.0.war  /var/lib/tomcat7/webapps/marketplace.war"
         execute "sudo service tomcat7 start"
       end
     end
