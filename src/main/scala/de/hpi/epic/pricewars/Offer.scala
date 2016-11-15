@@ -37,5 +37,5 @@ object ShippingTime extends SQLSyntaxSupport[ShippingTime] {
 
 case class BuyRequest ( price: BigDecimal,
                         amount: Int,
-                        customer_id: Option[Long],
+                        consumer_id: Option[Long],
                         prime: Option[Boolean] )
