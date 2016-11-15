@@ -24,7 +24,7 @@ libraryDependencies ++= {
     "com.typesafe.akka"   %%  "akka-slf4j"    % akkaV,
     "org.specs2"          %%  "specs2-core"   % specs2V % "test",
     "org.scalikejdbc"     %%  "scalikejdbc"   % scalikejdbcV,
-    "org.slf4j"           %   "slf4j-simple"  % slf4jV
+    "ch.qos.logback"      % "logback-classic" % "1.1.3"
   )
 }
 

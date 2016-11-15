@@ -25,9 +25,15 @@ object DatabaseStore {
     DB localTx { implicit session =>
       sql"""CREATE TABLE IF NOT EXISTS merchants (
         merchant_id SERIAL UNIQUE,
-        api_endpoint_url VARCHAR(250) NOT NULL,
-        merchant_name VARCHAR(100) NOT NULL,
-        algorithm_name VARCHAR(100) NOT NULL
+        api_endpoint_url VARCHAR(255) NOT NULL,
+        merchant_name VARCHAR(255) NOT NULL,
+        algorithm_name VARCHAR(255) NOT NULL
+      )""".execute.apply()
+      sql"""CREATE TABLE IF NOT EXISTS consumers (
+        consumer_id SERIAL UNIQUE,
+        api_endpoint_url VARCHAR(255) NOT NULL,
+        consumer_name VARCHAR(255) NOT NULL,
+        description VARCHAR(255) NOT NULL
       )""".execute.apply()
       sql"""CREATE TABLE IF NOT EXISTS offers (
         offer_id SERIAL NOT NULL PRIMARY KEY,
@@ -72,10 +78,13 @@ object DatabaseStore {
     }
   }
 
-  def getOffers: Result[Seq[Offer]] = {
+  def getOffers(product_id: Option[Long]): Result[Seq[Offer]] = {
     val res = Try(DB readOnly { implicit session =>
-      sql"SELECT offer_id, product_id, merchant_id, amount, price, shipping_time_standard, shipping_time_prime, prime FROM offers WHERE amount > 0"
-        .map(rs => Offer(rs)).list.apply()
+      val sql = product_id match {
+        case Some(id) => sql"SELECT offer_id, product_id, merchant_id, amount, price, shipping_time_standard, shipping_time_prime, prime FROM offers WHERE amount > 0 AND product_id = $id"
+        case None => sql"SELECT offer_id, product_id, merchant_id, amount, price, shipping_time_standard, shipping_time_prime, prime FROM offers WHERE amount > 0"
+      }
+      sql.map(rs => Offer(rs)).list.apply()
     })
     res match {
       case scala.util.Success(v) => Success(v)
@@ -197,10 +206,58 @@ object DatabaseStore {
     }
   }
 
+  def addConsumer(consumer: Consumer): Result[Consumer] = {
+    val res = Try(DB localTx { implicit session =>
+      sql"INSERT INTO consumers VALUES (DEFAULT, ${consumer.api_endpoint_url}, ${consumer.consumer_name}, ${consumer.description})"
+        .updateAndReturnGeneratedKey.apply()
+    })
+    res match {
+      case scala.util.Success(id) => Success(consumer.copy(consumer_id = Some(id)))
+      case scala.util.Failure(e) => Failure(e.getMessage, 500)
+    }
+  }
+
+  def deleteConsumer(consumer_id: Long): Result[Unit] = {
+    val res = Try(DB localTx { implicit session =>
+      sql"DELETE FROM consumers WHERE consumer_id = $consumer_id".executeUpdate().apply()
+    })
+    res match {
+      case scala.util.Success(v) if v == 1 => Success((): Unit)
+      case scala.util.Success(v) if v != 1 => Failure(s"No consumer with id $consumer_id", 404)
+      case scala.util.Failure(e) => Failure(e.getMessage, 500)
+    }
+  }
+
+  def getConsumers: Result[Seq[Consumer]] = {
+    val res = Try(DB readOnly { implicit session =>
+      sql"SELECT consumer_id, api_endpoint_url, consumer_name, description FROM consumers"
+        .map(rs => Consumer(rs)).list.apply()
+    })
+    res match {
+      case scala.util.Success(v) => Success(v)
+      case scala.util.Failure(e) => Failure(e.getMessage, 500)
+    }
+  }
+
+  def getConsumer(consumer_id: Long): Result[Consumer] = {
+    val res = Try(DB readOnly { implicit session =>
+      sql"""SELECT consumer_id, api_endpoint_url, consumer_name, description
+        FROM consumers
+        WHERE consumer_id = $consumer_id"""
+        .map(rs => Consumer(rs)).list.apply().headOption
+    })
+    res match {
+      case scala.util.Success(Some(v)) => Success(v)
+      case scala.util.Success(None) => Failure(s"No consumer with key $consumer_id found", 404)
+      case scala.util.Failure(e) => Failure(e.getMessage, 500)
+    }
+  }
+
   def reset(): Unit = {
     DB localTx { implicit session =>
       sql"""DROP TABLE IF EXISTS offers""".execute.apply()
       sql"""DROP TABLE IF EXISTS merchants""".execute.apply()
+      sql"""DROP TABLE IF EXISTS consumers""".execute.apply()
     }
   }
 }
