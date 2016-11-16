@@ -6,6 +6,8 @@ scalaVersion := "2.11.8"
 
 scalacOptions := Seq("-unchecked", "-deprecation", "-encoding", "utf8")
 
+resolvers += Resolver.bintrayRepo("cakesolutions", "maven")
+
 libraryDependencies ++= {
   val akkaV = "2.4.12"
   val sprayV = "1.3.2"
