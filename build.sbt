@@ -13,6 +13,7 @@ libraryDependencies ++= {
   val scalikejdbcV = "2.5.0"
   val slf4jV = "1.7.21"
   val logbackV = "1.1.3"
+  val kafkaV = "0.10.0.0"
 
   Seq(
     "io.spray"            %%  "spray-servlet"         % sprayV,
@@ -26,7 +27,8 @@ libraryDependencies ++= {
     "org.specs2"          %%  "specs2-core"           % specs2V % "test",
     "org.scalikejdbc"     %%  "scalikejdbc"           % scalikejdbcV,
     "org.scalikejdbc"     %%  "scalikejdbc-config"    % scalikejdbcV,
-    "ch.qos.logback"      % "logback-classic"         % logbackV
+    "ch.qos.logback"      % "logback-classic"         % logbackV,
+    "net.cakesolutions"   %% "scala-kafka-client-akka" % kafkaV
   )
 }
 

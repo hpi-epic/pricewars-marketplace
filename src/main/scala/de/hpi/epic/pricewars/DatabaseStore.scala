@@ -1,8 +1,11 @@
 package de.hpi.epic.pricewars
 
-import scala.collection.mutable
 import scalikejdbc._
 import scalikejdbc.config._
+import cakesolutions.kafka.{KafkaProducer, KafkaProducerRecord}
+import KafkaProducer.Conf
+import com.typesafe.config.ConfigFactory
+import org.apache.kafka.common.serialization.StringSerializer
 
 import scala.util.Try
 
@@ -44,6 +47,9 @@ object DatabaseStore {
       )""".execute.apply()
     }
   }
+
+  val config = ConfigFactory.load
+  val producer = KafkaProducer(Conf(config, new StringSerializer, new StringSerializer))
 
   def addOffer(offer: Offer): Result[Offer] = {
     val res = Try(DB localTx { implicit session =>
@@ -108,7 +114,10 @@ object DatabaseStore {
       sql"UPDATE offers SET amount = amount - $amount WHERE offer_id = $offer_id AND price <= $price".executeUpdate().apply()
     })
     res match {
-      case scala.util.Success(v) if v == 1 => Success((): Unit)
+      case scala.util.Success(v) if v == 1 => {
+        producer.send(KafkaProducerRecord("sales", s"""{"offer_id": $offer_id, "amount": $amount, "price": $price}"""))
+        Success((): Unit)
+      }
       case scala.util.Success(v) if v != 1 => Failure("price changed or product not found", 409) // TODO: Check why the update failed
       case scala.util.Failure(_) => Failure("out of stock", 410)
     }
@@ -133,7 +142,10 @@ object DatabaseStore {
       }
     }
     res match {
-      case scala.util.Success(Some(v)) => Success(v)
+      case scala.util.Success(Some(v)) => {
+        producer.send(KafkaProducerRecord("updates", s"""{"offer_id": $offer_id, "price": ${offer.price}}"""))
+        Success(v)
+      }
       case scala.util.Success(None) => Failure("item not found", 404)
       case scala.util.Failure(e) => Failure(e.getMessage, 500)
     }
