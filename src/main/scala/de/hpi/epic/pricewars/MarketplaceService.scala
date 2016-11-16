@@ -1,13 +1,13 @@
 package de.hpi.epic.pricewars
 
-import akka.actor.Actor
+import akka.actor.{Actor, ActorLogging}
 import de.hpi.epic.pricewars.JSONConverter._
 import de.hpi.epic.pricewars.ResultConverter._
 import spray.http._
 import spray.json._
 import spray.routing._
 
-class MarketplaceServiceActor extends Actor with MarketplaceService {
+class MarketplaceServiceActor extends Actor with ActorLogging with MarketplaceService {
   override def actorRefFactory = context
 
   override def receive = runRoute(route)
@@ -145,6 +145,38 @@ trait MarketplaceService extends HttpService with CORSSupport {
             delete {
               complete {
                 val res = DatabaseStore.deleteConsumer(id)
+                res match {
+                  case Success(v) => StatusCodes.NoContent
+                  case f: Failure[Unit] => StatusCode.int2StatusCode(f.code) -> f.toJson.toString()
+                }
+              }
+            }
+        } ~
+        path("products") {
+          get {
+            complete {
+              DatabaseStore.getProducts
+            }
+          } ~
+            post {
+              entity(as[Product]) { product =>
+                detach() {
+                  complete {
+                    DatabaseStore.addProduct(product).successHttpCode(StatusCodes.Created)
+                  }
+                }
+              }
+            }
+        } ~
+        path("products" / LongNumber) { id =>
+          get {
+            complete {
+              DatabaseStore.getProduct(id)
+            }
+          } ~
+            delete {
+              complete {
+                val res = DatabaseStore.deleteProduct(id)
                 res match {
                   case Success(v) => StatusCodes.NoContent
                   case f: Failure[Unit] => StatusCode.int2StatusCode(f.code) -> f.toJson.toString()

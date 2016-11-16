@@ -2,7 +2,7 @@ package de.hpi.epic.pricewars
 
 import scala.collection.mutable
 import scalikejdbc._
-import com.typesafe.config.ConfigFactory
+import scalikejdbc.config._
 
 import scala.util.Try
 
@@ -11,17 +11,9 @@ import scala.util.Try
   */
 
 object DatabaseStore {
-  val config = ConfigFactory.load()
-  val username = config.getString("marketplace.database.username")
-  val password = config.getString("marketplace.database.password")
-  val host = config.getString("marketplace.database.host")
-  val port = config.getInt("marketplace.database.port")
-  val databaseName = config.getString("marketplace.database.databaseName")
-  Class.forName("org.postgresql.Driver")
-  ConnectionPool.singleton(s"jdbc:postgresql://$host:$port/$databaseName", username, password)
-  implicit val session = AutoSession
 
   def setup(): Unit = {
+    DBs.setupAll()
     DB localTx { implicit session =>
       sql"""CREATE TABLE IF NOT EXISTS merchants (
         merchant_id SERIAL UNIQUE,
@@ -34,6 +26,11 @@ object DatabaseStore {
         api_endpoint_url VARCHAR(255) NOT NULL,
         consumer_name VARCHAR(255) NOT NULL,
         description VARCHAR(255) NOT NULL
+      )""".execute.apply()
+      sql"""CREATE TABLE IF NOT EXISTS products (
+         product_id SERIAL NOT NULL PRIMARY KEY,
+         name VARCHAR(255) NOT NULL,
+         genre VARCHAR(255) NOT NULL
       )""".execute.apply()
       sql"""CREATE TABLE IF NOT EXISTS offers (
         offer_id SERIAL NOT NULL PRIMARY KEY,
@@ -253,8 +250,56 @@ object DatabaseStore {
     }
   }
 
+  def addProduct(product: Product): Result[Product] = {
+    val res = Try(DB localTx { implicit session =>
+      sql"INSERT INTO products VALUES (DEFAULT, ${product.name}, ${product.genre})"
+        .updateAndReturnGeneratedKey.apply()
+    })
+    res match {
+      case scala.util.Success(id) => Success(product.copy(product_id = Some(id)))
+      case scala.util.Failure(e) => Failure(e.getMessage, 500)
+    }
+  }
+
+  def deleteProduct(product_id: Long): Result[Unit] = {
+    val res = Try(DB localTx { implicit session =>
+      sql"DELETE FROM products WHERE product_id = $product_id".executeUpdate().apply()
+    })
+    res match {
+      case scala.util.Success(v) if v == 1 => Success((): Unit)
+      case scala.util.Success(v) if v != 1 => Failure(s"No product with id $product_id", 404)
+      case scala.util.Failure(e) => Failure(e.getMessage, 500)
+    }
+  }
+
+  def getProducts: Result[Seq[Product]] = {
+    val res = Try(DB readOnly { implicit session =>
+      sql"SELECT product_id, name, genre FROM products"
+        .map(rs => Product(rs)).list.apply()
+    })
+    res match {
+      case scala.util.Success(v) => Success(v)
+      case scala.util.Failure(e) => Failure(e.getMessage, 500)
+    }
+  }
+
+  def getProduct(product_id: Long): Result[Product] = {
+    val res = Try(DB readOnly { implicit session =>
+      sql"""SELECT product_id, name, genre
+        FROM products
+        WHERE product_id = $product_id"""
+        .map(rs => Product(rs)).list.apply().headOption
+    })
+    res match {
+      case scala.util.Success(Some(v)) => Success(v)
+      case scala.util.Success(None) => Failure(s"No product with key $product_id found", 404)
+      case scala.util.Failure(e) => Failure(e.getMessage, 500)
+    }
+  }
+
   def reset(): Unit = {
     DB localTx { implicit session =>
+      sql"""DROP TABLE IF EXISTS products""".execute.apply()
       sql"""DROP TABLE IF EXISTS offers""".execute.apply()
       sql"""DROP TABLE IF EXISTS merchants""".execute.apply()
       sql"""DROP TABLE IF EXISTS consumers""".execute.apply()

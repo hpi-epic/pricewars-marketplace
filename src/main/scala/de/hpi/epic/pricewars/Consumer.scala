@@ -3,7 +3,7 @@ package de.hpi.epic.pricewars
 import scalikejdbc._
 
 /**
-  * Created by sebastian on 15.11.2016.
+  * Created by sebastian on 15.11.16
   */
 case class Consumer(api_endpoint_url: String,
                     consumer_name: String,

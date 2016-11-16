@@ -7,7 +7,7 @@ import StatusCodes._
 import JSONConverter._
 
 /**
-  * Created by sebastian on 15.11.2016.
+  * Created by sebastian on 15.11.16
   */
 class ConsumerTests extends Specification with BeforeAfterEach with Specs2RouteTest with MarketplaceService {
   sequential
