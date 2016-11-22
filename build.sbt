@@ -31,8 +31,8 @@ libraryDependencies ++= {
     "org.scalikejdbc"         %%  "scalikejdbc"               % scalikejdbcV,
     "org.scalikejdbc"         %%  "scalikejdbc-config"        % scalikejdbcV,
     "ch.qos.logback"          %   "logback-classic"           % logbackV,
-    "org.scala-lang.modules"  %%  "scala-xml"                 % scalaxmlV,
-    "net.cakesolutions"       %% "scala-kafka-client-akka"    % kafkaV
+    "net.cakesolutions"       %% "scala-kafka-client-akka"    % kafkaV,
+    "org.scala-lang.modules"  %%  "scala-xml"                 % scalaxmlV
   )
 }
 
