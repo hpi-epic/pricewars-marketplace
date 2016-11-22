@@ -1,7 +1,5 @@
 package de.hpi.epic.pricewars
 
-import java.util.Calendar
-
 import scalikejdbc._
 import scalikejdbc.config._
 import cakesolutions.kafka.{KafkaProducer, KafkaProducerRecord}
@@ -21,7 +19,7 @@ object DatabaseStore {
   DBs.setupAll()
 
   def setup(): Unit = {
-    // reset();
+    reset()
 
     DB localTx { implicit session =>
       sql"""CREATE TABLE IF NOT EXISTS merchants (
