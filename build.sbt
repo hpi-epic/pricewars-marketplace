@@ -11,7 +11,7 @@ resolvers += Resolver.bintrayRepo("cakesolutions", "maven")
 libraryDependencies ++= {
   val akkaV = "2.4.12"
   val sprayV = "1.3.2"
-  val specs2V = "2.3.13"
+  val specs2V = "3.8.6"
   val scalikejdbcV = "2.5.0"
   val slf4jV = "1.7.21"
   val logbackV = "1.1.3"
@@ -22,7 +22,7 @@ libraryDependencies ++= {
     "io.spray"            %%  "spray-routing"         % sprayV,
     "io.spray"            %%  "spray-json"            % sprayV,
     "io.spray"            %%  "spray-can"             % sprayV,
-    "io.spray"            %%  "spray-testkit"         % sprayV % "test",
+    "io.spray"            %%  "spray-testkit"         % sprayV % "test" exclude("org.specs2", "specs2_2.11"),
     "com.typesafe.akka"   %%  "akka-actor"            % akkaV,
     "com.typesafe.akka"   %%  "akka-testkit"          % akkaV   % "test",
     "com.typesafe.akka"   %%  "akka-slf4j"            % akkaV,
