@@ -16,9 +16,10 @@ import scala.util.Try
   */
 
 object DatabaseStore {
+  println(DBs.config)
+  DBs.setupAll()
 
   def setup(): Unit = {
-    DBs.setupAll()
     DB localTx { implicit session =>
       sql"""CREATE TABLE IF NOT EXISTS merchants (
         merchant_id SERIAL UNIQUE,
