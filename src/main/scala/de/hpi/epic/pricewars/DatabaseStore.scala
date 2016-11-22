@@ -133,6 +133,7 @@ object DatabaseStore {
   }
 
   def updateOffer(offer_id: Long, offer: Offer): Result[Offer] = {
+    producer.send(KafkaProducerRecord("updateOffer", s"""{"timestamp": "${new DateTime()}"}"""))
     val res = Try {
       DB localTx { implicit session =>
         sql"""UPDATE offers SET
@@ -163,6 +164,7 @@ object DatabaseStore {
   }
 
   def restockOffer(offer_id: Long, amount: Int): Result[Offer] = {
+    producer.send(KafkaProducerRecord("restockOffer", s"""{"timestamp": "${new DateTime()}"}"""))
     val res = Try {
       DB localTx { implicit session =>
         sql"UPDATE offers SET amount = amount + $amount WHERE offer_id = $offer_id".executeUpdate().apply()
