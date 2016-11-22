@@ -16,21 +16,23 @@ libraryDependencies ++= {
   val slf4jV = "1.7.21"
   val logbackV = "1.1.3"
   val kafkaV = "0.10.0.0"
+  val scalaxmlV = "1.0.6"
 
   Seq(
-    "io.spray"            %%  "spray-servlet"         % sprayV,
-    "io.spray"            %%  "spray-routing"         % sprayV,
-    "io.spray"            %%  "spray-json"            % sprayV,
-    "io.spray"            %%  "spray-can"             % sprayV,
-    "io.spray"            %%  "spray-testkit"         % sprayV % "test" exclude("org.specs2", "specs2_2.11"),
-    "com.typesafe.akka"   %%  "akka-actor"            % akkaV,
-    "com.typesafe.akka"   %%  "akka-testkit"          % akkaV   % "test",
-    "com.typesafe.akka"   %%  "akka-slf4j"            % akkaV,
-    "org.specs2"          %%  "specs2-core"           % specs2V % "test",
-    "org.scalikejdbc"     %%  "scalikejdbc"           % scalikejdbcV,
-    "org.scalikejdbc"     %%  "scalikejdbc-config"    % scalikejdbcV,
-    "ch.qos.logback"      %   "logback-classic"       % logbackV
-    "net.cakesolutions"   %% "scala-kafka-client-akka" % kafkaV
+    "io.spray"                %%  "spray-servlet"             % sprayV,
+    "io.spray"                %%  "spray-routing"             % sprayV,
+    "io.spray"                %%  "spray-json"                % sprayV,
+    "io.spray"                %%  "spray-can"                 % sprayV,
+    "io.spray"                %%  "spray-testkit"             % sprayV % "test" exclude("org.specs2", "specs2_2.11"),
+    "com.typesafe.akka"       %%  "akka-actor"                % akkaV,
+    "com.typesafe.akka"       %%  "akka-testkit"              % akkaV % "test",
+    "com.typesafe.akka"       %%  "akka-slf4j"                % akkaV,
+    "org.specs2"              %%  "specs2-core"               % specs2V % "test",
+    "org.scalikejdbc"         %%  "scalikejdbc"               % scalikejdbcV,
+    "org.scalikejdbc"         %%  "scalikejdbc-config"        % scalikejdbcV,
+    "ch.qos.logback"          %   "logback-classic"           % logbackV,
+    "org.scala-lang.modules"  %%  "scala-xml"                 % scalaxmlV,
+    "net.cakesolutions"       %% "scala-kafka-client-akka"    % kafkaV
   )
 }
 
