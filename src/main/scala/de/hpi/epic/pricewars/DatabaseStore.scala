@@ -1,5 +1,7 @@
 package de.hpi.epic.pricewars
 
+import java.util.Calendar
+
 import scalikejdbc._
 import scalikejdbc.config._
 import cakesolutions.kafka.{KafkaProducer, KafkaProducerRecord}
@@ -37,7 +39,9 @@ object DatabaseStore {
       )""".execute.apply()
       sql"""CREATE TABLE IF NOT EXISTS offers (
         offer_id SERIAL NOT NULL PRIMARY KEY,
+        uid INTEGER NOT NULL,
         product_id INTEGER NOT NULL,
+        quality INTEGER NOT NULL,
         merchant_id INTEGER NOT NULL REFERENCES merchants ( merchant_id ),
         amount INTEGER NOT NULL CHECK (amount >= 0),
         price NUMERIC(11,2) NOT NULL,
@@ -55,7 +59,9 @@ object DatabaseStore {
     val res = Try(DB localTx { implicit session =>
       sql"""INSERT INTO offers VALUES (
           DEFAULT,
+          ${offer.uid},
           ${offer.product_id},
+          ${offer.quality},
           ${offer.merchant_id},
           ${offer.amount},
           ${offer.price},
@@ -84,8 +90,8 @@ object DatabaseStore {
   def getOffers(product_id: Option[Long]): Result[Seq[Offer]] = {
     val res = Try(DB readOnly { implicit session =>
       val sql = product_id match {
-        case Some(id) => sql"SELECT offer_id, product_id, merchant_id, amount, price, shipping_time_standard, shipping_time_prime, prime FROM offers WHERE amount > 0 AND product_id = $id"
-        case None => sql"SELECT offer_id, product_id, merchant_id, amount, price, shipping_time_standard, shipping_time_prime, prime FROM offers WHERE amount > 0"
+        case Some(id) => sql"SELECT offer_id, uid, product_id, quality, merchant_id, amount, price, shipping_time_standard, shipping_time_prime, prime FROM offers WHERE amount > 0 AND product_id = $id"
+        case None => sql"SELECT offer_id, uid, product_id, quality, merchant_id, amount, price, shipping_time_standard, shipping_time_prime, prime FROM offers WHERE amount > 0"
       }
       sql.map(rs => Offer(rs)).list.apply()
     })
@@ -97,7 +103,7 @@ object DatabaseStore {
 
   def getOffer(offer_id: Long): Result[Offer] = {
     val res = Try(DB readOnly { implicit session =>
-      sql"""SELECT offer_id, product_id, merchant_id, amount, price, shipping_time_standard, shipping_time_prime, prime
+      sql"""SELECT offer_id, uid, product_id, quality, merchant_id, amount, price, shipping_time_standard, shipping_time_prime, prime
         FROM offers
         WHERE offer_id = $offer_id"""
         .map(rs => Offer(rs)).list.apply().headOption
@@ -115,7 +121,7 @@ object DatabaseStore {
     })
     res match {
       case scala.util.Success(v) if v == 1 => {
-        producer.send(KafkaProducerRecord("sales", s"""{"offer_id": $offer_id, "amount": $amount, "price": $price}"""))
+        producer.send(KafkaProducerRecord("sales", s"""{"offer_id": $offer_id, "amount": $amount, "price": $price, "timestamp": ${Calendar.getInstance.getTime}"""))
         Success((): Unit)
       }
       case scala.util.Success(v) if v != 1 => Failure("price changed or product not found", 409) // TODO: Check why the update failed
@@ -127,7 +133,9 @@ object DatabaseStore {
     val res = Try {
       DB localTx { implicit session =>
         sql"""UPDATE offers SET
+        uid = ${offer.uid},
         product_id = ${offer.product_id},
+        quality = ${offer.quality},
         merchant_id = ${offer.merchant_id},
         amount = ${offer.amount},
         price = ${offer.price},
@@ -135,7 +143,7 @@ object DatabaseStore {
         shipping_time_prime = ${offer.shipping_time.prime},
         prime = ${offer.prime}
         WHERE offer_id = $offer_id""".executeUpdate().apply()
-        sql"""SELECT offer_id, product_id, merchant_id, amount, price, shipping_time_standard, shipping_time_prime, prime
+        sql"""SELECT offer_id, uid, product_id, quality, merchant_id, amount, price, shipping_time_standard, shipping_time_prime, prime
         FROM offers
         WHERE offer_id = $offer_id"""
           .map(rs => Offer(rs)).list.apply().headOption
@@ -155,7 +163,7 @@ object DatabaseStore {
     val res = Try {
       DB localTx { implicit session =>
         sql"UPDATE offers SET amount = amount + $amount WHERE offer_id = $offer_id".executeUpdate().apply()
-        sql"""SELECT offer_id, product_id, merchant_id, amount, price, shipping_time_standard, shipping_time_prime, prime
+        sql"""SELECT offer_id, uid, product_id, quality, merchant_id, amount, price, shipping_time_standard, shipping_time_prime, prime
         FROM offers
         WHERE offer_id = $offer_id"""
           .map(rs => Offer(rs)).list.apply().headOption

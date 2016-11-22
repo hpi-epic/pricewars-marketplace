@@ -6,7 +6,9 @@ import scalikejdbc._
   * Created by Jan on 01.11.2016.
   */
 case class Offer ( offer_id: Option[Long],
+                   uid: Long,
                    product_id: Long,
+                   quality: Long,
                    merchant_id: Long,
                    amount: Int,
                    price: BigDecimal,
@@ -16,11 +18,13 @@ case class Offer ( offer_id: Option[Long],
 object Offer extends SQLSyntaxSupport[Offer] {
   override val tableName = "offers"
   def apply(rs: WrappedResultSet) = new Offer(
-    Some(rs.long("offer_id")), rs.long("product_id"), rs.long("merchant_id"), rs.int("amount"),
+    Some(rs.long("offer_id")), rs.long("uid"), rs.long("product_id"), rs.long("quality"), rs.long("merchant_id"), rs.int("amount"),
     rs.bigDecimal("price"), ShippingTime(rs), rs.boolean("prime"))
 }
 
-case class OfferPatch (product_id: Option[Long] = None,
+case class OfferPatch (uid: Option[Long] = None,
+                       product_id: Option[Long] = None,
+                       quality: Option[Long] = None,
                        merchant_id: Option[Long] = None,
                        amount: Option[Int] = None,
                        price: Option[BigDecimal] = None,
