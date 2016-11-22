@@ -51,6 +51,7 @@ namespace :deploy do
   task :install_tomcat_war do
     on roles :all do
       within release_path do
+        execute "sudo mv #{release_path}/src/main/resources/application.deployment.conf  #{release_path}/src/main/resources/application.conf"
         execute "cd #{release_path} && sudo sbt package"
         execute "sudo service tomcat7 stop"
         execute "sudo rm -rf /var/lib/tomcat7/webapps/marketplace"
