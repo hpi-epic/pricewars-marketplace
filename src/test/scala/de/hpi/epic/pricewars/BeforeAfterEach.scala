@@ -10,6 +10,5 @@ trait BeforeAfterEach extends org.specs2.specification.BeforeAfterEach {
   }
 
   protected def after: Any = {
-    DatabaseStore.reset()
   }
 }
