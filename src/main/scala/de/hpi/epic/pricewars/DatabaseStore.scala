@@ -8,6 +8,7 @@ import cakesolutions.kafka.{KafkaProducer, KafkaProducerRecord}
 import KafkaProducer.Conf
 import com.typesafe.config.ConfigFactory
 import org.apache.kafka.common.serialization.StringSerializer
+import org.joda.time.DateTime
 
 import scala.util.Try
 
@@ -20,6 +21,8 @@ object DatabaseStore {
   DBs.setupAll()
 
   def setup(): Unit = {
+    // reset();
+
     DB localTx { implicit session =>
       sql"""CREATE TABLE IF NOT EXISTS merchants (
         merchant_id SERIAL UNIQUE,
@@ -122,7 +125,7 @@ object DatabaseStore {
     })
     res match {
       case scala.util.Success(v) if v == 1 => {
-        producer.send(KafkaProducerRecord("sales", s"""{"offer_id": $offer_id, "amount": $amount, "price": $price, "timestamp": ${Calendar.getInstance.getTime}"""))
+        producer.send(KafkaProducerRecord("sales", s"""{"offer_id": $offer_id, "amount": $amount, "price": $price, "timestamp": "${new DateTime()}"}"""))
         Success((): Unit)
       }
       case scala.util.Success(v) if v != 1 => Failure("price changed or product not found", 409) // TODO: Check why the update failed
