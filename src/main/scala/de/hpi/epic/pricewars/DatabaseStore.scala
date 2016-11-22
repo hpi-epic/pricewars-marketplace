@@ -90,6 +90,7 @@ object DatabaseStore {
   }
 
   def getOffers(product_id: Option[Long]): Result[Seq[Offer]] = {
+    producer.send(KafkaProducerRecord("getOffer", s"""{"timestamp": "${new DateTime()}"}"""))
     val res = Try(DB readOnly { implicit session =>
       val sql = product_id match {
         case Some(id) => sql"SELECT offer_id, uid, product_id, quality, merchant_id, amount, price, shipping_time_standard, shipping_time_prime, prime FROM offers WHERE amount > 0 AND product_id = $id"
