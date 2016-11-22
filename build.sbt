@@ -11,7 +11,7 @@ resolvers += Resolver.bintrayRepo("cakesolutions", "maven")
 libraryDependencies ++= {
   val akkaV = "2.4.12"
   val sprayV = "1.3.2"
-  val specs2V = "2.4.17"
+  val specs2V = "2.3.13"
   val scalikejdbcV = "2.5.0"
   val slf4jV = "1.7.21"
   val logbackV = "1.1.3"
@@ -29,9 +29,11 @@ libraryDependencies ++= {
     "org.specs2"          %%  "specs2-core"           % specs2V % "test",
     "org.scalikejdbc"     %%  "scalikejdbc"           % scalikejdbcV,
     "org.scalikejdbc"     %%  "scalikejdbc-config"    % scalikejdbcV,
-    "ch.qos.logback"      % "logback-classic"         % logbackV,
+    "ch.qos.logback"      %   "logback-classic"       % logbackV
     "net.cakesolutions"   %% "scala-kafka-client-akka" % kafkaV
   )
 }
 
-tomcat()
+parallelExecution in Test := false
+
+enablePlugins(TomcatPlugin)

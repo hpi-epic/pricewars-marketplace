@@ -8,7 +8,7 @@ import org.specs2.specification.BeforeAfterExample
 trait BeforeAfterEach extends BeforeAfterExample {
 
   protected def before: Any = {
-    DatabaseStore.setup
+    DatabaseStore.setup()
   }
 
   protected def after: Any = {
