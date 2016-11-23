@@ -15,7 +15,6 @@ import scala.util.Try
   */
 
 object DatabaseStore {
-  println(DBs.config)
   DBs.setupAll()
 
   def setup(): Unit = {
