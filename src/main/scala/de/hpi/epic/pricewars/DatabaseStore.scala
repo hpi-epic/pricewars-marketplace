@@ -24,7 +24,7 @@ object DatabaseStore {
     DB localTx { implicit session =>
       sql"""CREATE TABLE IF NOT EXISTS merchants (
         merchant_id SERIAL UNIQUE,
-        api_endpoint_url VARCHAR(255) NOT NULL,
+        api_endpoint_url VARCHAR(255) UNIQUE NOT NULL,
         merchant_name VARCHAR(255) NOT NULL,
         algorithm_name VARCHAR(255) NOT NULL
       )""".execute.apply()
@@ -183,8 +183,13 @@ object DatabaseStore {
 
   def addMerchant(merchant: Merchant): Result[Merchant] = {
     val res = Try(DB localTx { implicit session =>
-      sql"INSERT INTO merchants VALUES (DEFAULT, ${merchant.api_endpoint_url}, ${merchant.merchant_name}, ${merchant.algorithm_name})"
-        .updateAndReturnGeneratedKey.apply()
+      sql"""BEGIN;
+      SELECT merchant_id INTO TEMPORARY TABLE existing_merchant FROM merchants WHERE api_endpoint_url = ${merchant.api_endpoint_url};
+      DELETE FROM merchants WHERE merchant_id = (SELECT merchant_id FROM existing_merchant);
+      INSERT INTO merchants VALUES (DEFAULT, ${merchant.api_endpoint_url}, ${merchant.merchant_name}, ${merchant.algorithm_name});
+      DROP TABLE existing_merchant;
+      COMMIT;""".update().apply()
+      sql"SELECT merchant_id, api_endpoint_url, merchant_name, algorithm_name FROM merchants WHERE api_endpoint_url = ${merchant.api_endpoint_url}".map(rs => Merchant(rs)).list.apply().headOption.get.merchant_id.get
     })
     res match {
       case scala.util.Success(id) => Success(merchant.copy(merchant_id = Some(id)))
@@ -194,7 +199,10 @@ object DatabaseStore {
 
   def deleteMerchant(merchant_id: Long): Result[Unit] = {
     val res = Try(DB localTx { implicit session =>
-      sql"DELETE FROM merchants WHERE merchant_id = $merchant_id".executeUpdate().apply()
+      sql"""BEGIN;
+      DELETE FROM offers where merchant_id = $merchant_id;
+      DELETE FROM merchants WHERE merchant_id = $merchant_id;
+      COMMIT;""".executeUpdate().apply()
     })
     res match {
       case scala.util.Success(v) if v == 1 => Success((): Unit)
