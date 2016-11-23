@@ -27,7 +27,10 @@ object MerchantConnector {
       entity = s"""{"offer_id": $offer_id, "amount": $amount, "price": $price}""",
       headers = List[HttpHeader](HttpHeaders.`Content-Type`(ContentTypes.`application/json`))
     )).mapTo[HttpResponse]
-    x.onFailure{ case _ => println("kill them")}
+    x.onFailure{ case _ =>
+      println("kill merchant: " + merchant.algorithm_name)
+      DatabaseStore.deleteMerchant(merchant.merchant_id.get)
+    }
     x.onSuccess{ case _ => println("ok")}
   }
 }
