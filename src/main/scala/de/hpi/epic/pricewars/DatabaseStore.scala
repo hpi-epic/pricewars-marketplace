@@ -43,7 +43,7 @@ object DatabaseStore {
         uid INTEGER NOT NULL,
         product_id INTEGER NOT NULL,
         quality INTEGER NOT NULL,
-        merchant_id INTEGER NOT NULL REFERENCES merchants ( merchant_id ),
+        merchant_id INTEGER NOT NULL REFERENCES merchants ( merchant_id ) ON DELETE CASCADE,
         amount INTEGER NOT NULL CHECK (amount >= 0),
         price NUMERIC(11,2) NOT NULL,
         shipping_time_standard INTEGER NOT NULL,
@@ -198,10 +198,7 @@ object DatabaseStore {
 
   def deleteMerchant(merchant_id: Long): Result[Unit] = {
     val res = Try(DB localTx { implicit session =>
-      sql"""BEGIN;
-      DELETE FROM offers where merchant_id = $merchant_id;
-      DELETE FROM merchants WHERE merchant_id = $merchant_id;
-      COMMIT;""".executeUpdate().apply()
+      sql"DELETE FROM merchants WHERE merchant_id = $merchant_id".executeUpdate().apply()
     })
     res match {
       case scala.util.Success(v) if v == 1 => Success((): Unit)
