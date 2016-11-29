@@ -32,7 +32,8 @@ libraryDependencies ++= {
     "org.scalikejdbc"         %%  "scalikejdbc-config"        % scalikejdbcV,
     "ch.qos.logback"          %   "logback-classic"           % logbackV,
     "net.cakesolutions"       %% "scala-kafka-client-akka"    % kafkaV,
-    "org.scala-lang.modules"  %%  "scala-xml"                 % scalaxmlV
+    "org.scala-lang.modules"  %%  "scala-xml"                 % scalaxmlV,
+    "commons-codec"           %  "commons-codec"              % "1.10"
   )
 }
 
