@@ -13,13 +13,14 @@ case class Offer ( offer_id: Option[Long],
                    amount: Int,
                    price: BigDecimal,
                    shipping_time: ShippingTime,
-                   prime: Boolean = false )
+                   prime: Boolean = false,
+                   signature: String)
 
 object Offer extends SQLSyntaxSupport[Offer] {
   override val tableName = "offers"
   def apply(rs: WrappedResultSet) = new Offer(
     Some(rs.long("offer_id")), rs.long("uid"), rs.long("product_id"), rs.long("quality"), rs.long("merchant_id"), rs.int("amount"),
-    rs.bigDecimal("price"), ShippingTime(rs), rs.boolean("prime"))
+    rs.bigDecimal("price"), ShippingTime(rs), rs.boolean("prime"), "")
 }
 
 case class OfferPatch (uid: Option[Long] = None,
