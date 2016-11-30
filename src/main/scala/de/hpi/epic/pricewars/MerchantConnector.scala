@@ -22,12 +22,15 @@ object MerchantConnector {
   import system.dispatcher // implicit execution context
 
   def notifyMerchant(merchant: Merchant, offer_id: Long, amount: Int, price: BigDecimal) = {
-    val x = (IO(Http) ? HttpRequest(POST,
+    val request = (IO(Http) ? HttpRequest(POST,
       Uri(merchant.api_endpoint_url + "/sold"),
       entity = s"""{"offer_id": $offer_id, "amount": $amount, "price": $price}""",
       headers = List[HttpHeader](HttpHeaders.`Content-Type`(ContentTypes.`application/json`))
     )).mapTo[HttpResponse]
-    x.onFailure{ case _ => println("kill them")}
-    x.onSuccess{ case _ => println("ok")}
+    request.onFailure{ case _ =>
+      println("kill merchant: " + merchant.algorithm_name)
+      DatabaseStore.deleteMerchant(merchant.merchant_id.get)
+    }
+    request.onSuccess{ case _ => println("ok")}
   }
 }

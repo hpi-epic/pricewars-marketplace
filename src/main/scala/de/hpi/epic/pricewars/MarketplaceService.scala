@@ -1,6 +1,6 @@
 package de.hpi.epic.pricewars
 
-import akka.actor.{Actor, ActorLogging}
+import akka.actor.{Actor, ActorContext, ActorLogging}
 import de.hpi.epic.pricewars.JSONConverter._
 import de.hpi.epic.pricewars.ResultConverter._
 import spray.http._
@@ -8,16 +8,16 @@ import spray.json._
 import spray.routing._
 
 class MarketplaceServiceActor extends Actor with ActorLogging with MarketplaceService {
-  override def actorRefFactory = context
+  override def actorRefFactory: ActorContext = context
 
-  override def receive = runRoute(route)
+  override def receive: Receive = runRoute(route)
 }
 
 /**
   * Created by Jan on 01.11.2016.
   */
 trait MarketplaceService extends HttpService with CORSSupport {
-  val route = respondWithMediaType(MediaTypes.`application/json`) {
+  val route: Route = respondWithMediaType(MediaTypes.`application/json`) {
     cors {
       path("offers") {
         get {
@@ -67,7 +67,7 @@ trait MarketplaceService extends HttpService with CORSSupport {
             entity(as[BuyRequest]) { buyRequest =>
               detach() {
                 complete {
-                  DatabaseStore.getOffer(id).flatMap(offer => DatabaseStore.getMerchant(offer.merchant_id.toLong)) match {
+                  DatabaseStore.getOffer(id).flatMap(offer => DatabaseStore.getMerchant(offer.merchant_id)) match {
                     case Success(merchant) => MerchantConnector.notifyMerchant(merchant, id, buyRequest.amount, buyRequest.price)
                   }
                   DatabaseStore.buyOffer(id, buyRequest.price, buyRequest.amount).successHttpCode(StatusCodes.NoContent)
@@ -81,7 +81,7 @@ trait MarketplaceService extends HttpService with CORSSupport {
             entity(as[OfferPatch]) { offer =>
               complete {
                 offer.amount match {
-                  case Some(amount) => DatabaseStore.restockOffer(id, amount)
+                  case Some(amount) => DatabaseStore.restockOffer(id, amount, "")
                   case _ => StatusCodes.InternalServerError -> "no amount specified"
                 }
               }
