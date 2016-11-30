@@ -1,8 +1,10 @@
-# Marktplace
+# Pricewars - Marktplace
 
 This Scala app implements the MVC pattern including continuous integration and deployment via Codeship. Please make sure tests are running before committing. HTML can be found in the _public/_ dir.
 
 We are using the [Github flow](https://guides.github.com/introduction/flow/) for contribution.
+
+The meta repository containing general information can be found [here](https://github.com/hpi-epic/masterproject-pricewars)
 
 ## Application Overview
 
