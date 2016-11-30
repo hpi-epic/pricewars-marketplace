@@ -67,9 +67,6 @@ trait MarketplaceService extends HttpService with CORSSupport {
             entity(as[BuyRequest]) { buyRequest =>
               detach() {
                 complete {
-                  DatabaseStore.getOffer(id).flatMap(offer => DatabaseStore.getMerchant(offer.merchant_id)) match {
-                    case Success(merchant) => MerchantConnector.notifyMerchant(merchant, id, buyRequest.amount, buyRequest.price)
-                  }
                   DatabaseStore.buyOffer(id, buyRequest.price, buyRequest.amount).successHttpCode(StatusCodes.NoContent)
                 }
               }

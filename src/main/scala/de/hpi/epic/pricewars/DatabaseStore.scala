@@ -5,7 +5,6 @@ import scalikejdbc.config._
 import cakesolutions.kafka.{KafkaProducer, KafkaProducerRecord}
 import KafkaProducer.Conf
 import com.typesafe.config.ConfigFactory
-import org.apache.commons.codec.binary.Hex
 import org.apache.kafka.common.serialization.StringSerializer
 import org.joda.time.DateTime
 
@@ -151,20 +150,29 @@ object DatabaseStore {
   }
 
   def buyOffer(offer_id: Long, price: BigDecimal, amount: Int): Result[Unit] = {
+    var merchant: Option[Merchant] = None
+    var merchant_id: Long = -1
+    DatabaseStore.getOffer(offer_id).flatMap(offer => DatabaseStore.getMerchant(offer.merchant_id)) match {
+      case Success(merchantFound) => {
+        merchant = Some(merchantFound)
+        merchant_id = merchantFound.merchant_id.getOrElse(-1)
+      }
+    }
     val res = Try(DB localTx { implicit session =>
       sql"UPDATE offers SET amount = amount - $amount WHERE offer_id = $offer_id AND price <= $price".executeUpdate().apply()
     })
     res match {
       case scala.util.Success(v) if v == 1 => {
-        kafka_producer.send(KafkaProducerRecord("buyOffer", s"""{"offer_id": $offer_id, "price": $price, "amount": $amount, "http_code": 200, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("buyOffer", s"""{"offer_id": $offer_id, "price": $price, "amount": $amount, "merchant_id": $merchant_id, "http_code": 200, "timestamp": "${new DateTime()}"}"""))
+        MerchantConnector.notifyMerchant(merchant.get, offer_id, amount, price)
         Success((): Unit)
       }
       case scala.util.Success(v) if v != 1 => {
-        kafka_producer.send(KafkaProducerRecord("buyOffer", s"""{"offer_id": $offer_id, "price": $price, "amount": $amount, "http_code": 409, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("buyOffer", s"""{"offer_id": $offer_id, "price": $price, "amount": $amount, "merchant_id": $merchant_id, "http_code": 409, "timestamp": "${new DateTime()}"}"""))
         Failure("price changed or product not found", 409)
       } // TODO: Check why the update failed
       case scala.util.Failure(_) => {
-        kafka_producer.send(KafkaProducerRecord("buyOffer", s"""{"offer_id": $offer_id, "price": $price, "amount": $amount, "http_code": 410, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("buyOffer", s"""{"offer_id": $offer_id, "price": $price, "amount": $amount, "merchant_id": $merchant_id, "http_code": 410, "timestamp": "${new DateTime()}"}"""))
         Failure("out of stock", 410)
       }
     }
