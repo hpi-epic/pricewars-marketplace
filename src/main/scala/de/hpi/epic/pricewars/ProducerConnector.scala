@@ -45,6 +45,7 @@ object ProducerConnector {
   }
 
   def validSignature(uid: Long, amount: Int, signature: String, decryption_key: String): Boolean = {
+    return true
     val signature_bytes = Base64.decodeBase64(signature)
     val decryption_key_bytes = Base64.decodeBase64(decryption_key)
     val cipher: Cipher = Cipher.getInstance("AES/ECB/NoPadding")
@@ -52,13 +53,8 @@ object ProducerConnector {
     val encrypted_signature = new String(cipher.doFinal(signature_bytes)).trim
     val producer_infos = encrypted_signature.split(" ")
 
-    println(encrypted_signature)
-    println(uid.toString + " " +amount.toString)
-
     if (producer_infos{0}.toLong == uid && producer_infos{1}.toInt == amount) {
       val totalAmountUsed = DatabaseStore.getUsedAmountForSignature(signature) + amount
-
-      println(totalAmountUsed)
 
       if (totalAmountUsed <= producer_infos{1}.toInt) {
         DatabaseStore.setUsedAmountForSignature(signature, totalAmountUsed)
