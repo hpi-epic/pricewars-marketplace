@@ -1,0 +1,3 @@
+[submodule "pricewars-utils"]
+	path = pricewars-utils
+	url = git@github.com:hpi-epic/pricewars-utils.git
