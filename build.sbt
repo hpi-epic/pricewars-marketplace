@@ -1,42 +1,47 @@
-name := "Marketplace"
+lazy val marketplace = (project in file(".")).settings(
 
-version := "1.0"
+  name := "Marketplace",
 
-scalaVersion := "2.11.8"
+  version := "1.0",
 
-scalacOptions := Seq("-unchecked", "-deprecation", "-encoding", "utf8")
+  scalaVersion := "2.11.8",
 
-resolvers += Resolver.bintrayRepo("cakesolutions", "maven")
+  scalacOptions := Seq("-unchecked", "-deprecation", "-encoding", "utf8"),
 
-libraryDependencies ++= {
-  val akkaV = "2.4.12"
-  val sprayV = "1.3.2"
-  val specs2V = "3.8.6"
-  val scalikejdbcV = "2.5.0"
-  val slf4jV = "1.7.21"
-  val logbackV = "1.1.3"
-  val kafkaV = "0.10.0.0"
-  val scalaxmlV = "1.0.6"
+  resolvers += Resolver.bintrayRepo("cakesolutions", "maven"),
 
-  Seq(
-    "io.spray"                %%  "spray-servlet"             % sprayV,
-    "io.spray"                %%  "spray-routing"             % sprayV,
-    "io.spray"                %%  "spray-json"                % sprayV,
-    "io.spray"                %%  "spray-can"                 % sprayV,
-    "io.spray"                %%  "spray-testkit"             % sprayV % "test" exclude("org.specs2", "specs2_2.11"),
-    "com.typesafe.akka"       %%  "akka-actor"                % akkaV,
-    "com.typesafe.akka"       %%  "akka-testkit"              % akkaV % "test",
-    "com.typesafe.akka"       %%  "akka-slf4j"                % akkaV,
-    "org.specs2"              %%  "specs2-core"               % specs2V % "test",
-    "org.scalikejdbc"         %%  "scalikejdbc"               % scalikejdbcV,
-    "org.scalikejdbc"         %%  "scalikejdbc-config"        % scalikejdbcV,
-    "ch.qos.logback"          %   "logback-classic"           % logbackV,
-    "net.cakesolutions"       %% "scala-kafka-client-akka"    % kafkaV,
-    "org.scala-lang.modules"  %%  "scala-xml"                 % scalaxmlV,
-    "commons-codec"           %  "commons-codec"              % "1.10"
-  )
-}
+  libraryDependencies ++= {
+    val akkaV = "2.4.12"
+    val sprayV = "1.3.2"
+    val specs2V = "3.8.6"
+    val scalikejdbcV = "2.5.0"
+    val slf4jV = "1.7.21"
+    val logbackV = "1.1.3"
+    val kafkaV = "0.10.0.0"
+    val scalaxmlV = "1.0.6"
 
-parallelExecution in Test := false
+    Seq(
+      "io.spray"                %%  "spray-servlet"             % sprayV,
+      "io.spray"                %%  "spray-routing"             % sprayV,
+      "io.spray"                %%  "spray-json"                % sprayV,
+      "io.spray"                %%  "spray-can"                 % sprayV,
+      "io.spray"                %%  "spray-testkit"             % sprayV % "test" exclude("org.specs2", "specs2_2.11"),
+      "com.typesafe.akka"       %%  "akka-actor"                % akkaV,
+      "com.typesafe.akka"       %%  "akka-testkit"              % akkaV % "test",
+      "com.typesafe.akka"       %%  "akka-slf4j"                % akkaV,
+      "org.specs2"              %%  "specs2-core"               % specs2V % "test",
+      "org.scalikejdbc"         %%  "scalikejdbc"               % scalikejdbcV,
+      "org.scalikejdbc"         %%  "scalikejdbc-config"        % scalikejdbcV,
+      "ch.qos.logback"          %   "logback-classic"           % logbackV,
+      "net.cakesolutions"       %% "scala-kafka-client-akka"    % kafkaV,
+      "org.scala-lang.modules"  %%  "scala-xml"                 % scalaxmlV,
+      "commons-codec"           %  "commons-codec"              % "1.10"
+    )
+  },
+
+  parallelExecution in Test := false
+).dependsOn(`pricewars-utils`)
 
 enablePlugins(TomcatPlugin)
+
+lazy val `pricewars-utils` = project in file("./pricewars-utils")
