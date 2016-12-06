@@ -52,8 +52,13 @@ object ProducerConnector {
     val encrypted_signature = new String(cipher.doFinal(signature_bytes)).trim
     val producer_infos = encrypted_signature.split(" ")
 
+    println(encrypted_signature)
+    println(uid.toString + " " +amount.toString)
+
     if (producer_infos{0}.toLong == uid && producer_infos{1}.toInt == amount) {
       val totalAmountUsed = DatabaseStore.getUsedAmountForSignature(signature) + amount
+
+      println(totalAmountUsed)
 
       if (totalAmountUsed <= producer_infos{1}.toInt) {
         DatabaseStore.setUsedAmountForSignature(signature, totalAmountUsed)
