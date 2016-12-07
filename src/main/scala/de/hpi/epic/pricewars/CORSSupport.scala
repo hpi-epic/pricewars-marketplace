@@ -4,9 +4,6 @@ import spray.http.{AllOrigins, HttpMethod, HttpMethods}
 import spray.http.HttpHeaders._
 import spray.routing._
 
-/**
-  * Created by sebastian on 15.11.16
-  */
 
 // see also https://developer.mozilla.org/en-US/docs/Web/HTTP/Access_control_CORS
 

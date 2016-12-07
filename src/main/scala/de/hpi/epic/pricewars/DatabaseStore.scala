@@ -10,9 +10,6 @@ import org.joda.time.DateTime
 
 import scala.util.Try
 
-/**
-  * Created by Jan on 01.11.2016.
-  */
 
 object DatabaseStore {
   DBs.setupAll()

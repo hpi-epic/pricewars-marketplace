@@ -1,8 +1,5 @@
 package de.hpi.epic.pricewars
 
-/**
-  * Created by Jan on 02.11.2016.
-  */
 trait Result[T] {
   self =>
   def isSuccess: Boolean

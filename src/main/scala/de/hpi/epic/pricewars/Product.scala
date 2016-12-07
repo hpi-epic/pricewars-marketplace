@@ -2,9 +2,6 @@ package de.hpi.epic.pricewars
 
 import scalikejdbc._
 
-/**
-  * Created by sebastian on 15.11.16
-  */
 case class Product ( product_id: Option[Long],
                      name: String,
                      genre: String )

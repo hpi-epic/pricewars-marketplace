@@ -11,10 +11,6 @@ import spray.can.Http
 import spray.http._
 import HttpMethods._
 
-
-/**
-  * Created by sebastian on 08.11.16
-  */
 object MerchantConnector {
 
   implicit val system: ActorSystem = ActorSystem()

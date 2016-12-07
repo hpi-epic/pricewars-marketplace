@@ -17,11 +17,6 @@ import spray.json._
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
-
-/**
-  * Created by sebastian on 08.11.16
-  */
-
 object ProducerConnector {
   implicit val system: ActorSystem = ActorSystem()
   implicit val timeout: Timeout = Timeout(15.seconds)

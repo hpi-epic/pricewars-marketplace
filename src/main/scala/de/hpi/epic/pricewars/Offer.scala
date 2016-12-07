@@ -2,9 +2,6 @@ package de.hpi.epic.pricewars
 
 import scalikejdbc._
 
-/**
-  * Created by Jan on 01.11.2016.
-  */
 case class Offer ( offer_id: Option[Long],
                    uid: Long,
                    product_id: Long,

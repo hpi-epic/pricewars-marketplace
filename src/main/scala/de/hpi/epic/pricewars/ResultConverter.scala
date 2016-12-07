@@ -4,9 +4,6 @@ import spray.http.StatusCode
 import spray.httpx.marshalling.ToResponseMarshallable
 import spray.json._
 
-/**
-  * Created by Jan on 02.11.2016.
-  */
 object ResultConverter {
   implicit def toToResponseMarshallable[T](res: Result[T])
                                           (implicit successWriter: JsonWriter[T],

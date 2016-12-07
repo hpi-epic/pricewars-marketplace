@@ -13,9 +13,6 @@ class MarketplaceServiceActor extends Actor with ActorLogging with MarketplaceSe
   override def receive: Receive = runRoute(route)
 }
 
-/**
-  * Created by Jan on 01.11.2016.
-  */
 trait MarketplaceService extends HttpService with CORSSupport {
   val route: Route = respondWithMediaType(MediaTypes.`application/json`) {
     cors {
