@@ -12,7 +12,7 @@ trait CORSSupport {
   this: HttpService =>
   private val allowOriginHeader = `Access-Control-Allow-Origin`(AllOrigins)
   private val allowMethodHeader = `Access-Control-Allow-Methods`(HttpMethods.GET, HttpMethods.POST, HttpMethods.OPTIONS, HttpMethods.DELETE,
-    HttpMethods.CONNECT, HttpMethods.DELETE, HttpMethods.HEAD, HttpMethods.PATCH, HttpMethods.PUT, HttpMethods.TRACE)
+    HttpMethods.CONNECT, HttpMethods.HEAD, HttpMethods.PATCH, HttpMethods.PUT, HttpMethods.TRACE)
   private val allowHeadersHeader = `Access-Control-Allow-Headers`("Origin, X-Requested-With, Content-Type, Accept, Accept-Encoding, Accept-Language, Host," +
     " Referer, User-Agent, Overwrite, Destination, Depth, X-Token, X-File-Size, If-Modified-Since, X-File-Name, Cache-Control")
 
