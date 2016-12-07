@@ -40,7 +40,6 @@ object ProducerConnector {
   }
 
   def validSignature(uid: Long, amount: Int, signature: String, decryption_key: String): Boolean = {
-    return true
     val signature_bytes = Base64.decodeBase64(signature)
     val decryption_key_bytes = Base64.decodeBase64(decryption_key)
     val cipher: Cipher = Cipher.getInstance("AES/ECB/NoPadding")
