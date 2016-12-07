@@ -55,7 +55,7 @@ object DatabaseStore {
 
   val config = ConfigFactory.load
 
-  val kafka_producer = KafkaProducer(Conf(config.getConfig("kafka"), new StringSerializer, new StringSerializer))
+  val kafka_producer = KafkaProducer(Conf(config, new StringSerializer, new StringSerializer))
   val producer_key: String = ProducerConnector.getProducerKey(config.getString("producer_url"))
 
   def addOffer(offer: Offer): Result[Offer] = {
