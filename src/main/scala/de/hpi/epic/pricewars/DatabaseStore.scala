@@ -238,7 +238,7 @@ object DatabaseStore {
     }
     val offer = offerOption.get
 
-    val validSignature: Boolean = ProducerConnector.validSignature(offer.uid, offer.amount, offer.signature.getOrElse(""), producer_key)
+    val validSignature: Boolean = ProducerConnector.validSignature(offer.uid, amount, signature, producer_key)
 
     if (validSignature) {
       val res = Try {
@@ -260,12 +260,12 @@ object DatabaseStore {
           Failure("item not found", 404)
         }
         case scala.util.Failure(e) => {
-          kafka_producer.send(KafkaProducerRecord("restockOffer", s"""{"offer_id": $offer_id, "amount": $amount, "signature": "$signature", "http_code": 500, "timestamp": "${new DateTime()}"}"""))
+          kafka_producer.send(KafkaProducerRecord("restockOffer", s"""{"offer_id": $offer_id, "amount": $amount, "signature": "$signature", "http_code": 417, "timestamp": "${new DateTime()}"}"""))
           Failure(e.getMessage, 417)
         }
       }
     } else {
-      kafka_producer.send(KafkaProducerRecord("restockOffer", s"""{"uid": ${offer.uid}, "product_id": ${offer.product_id}, "quality": ${offer.quality}, "merchant_id": ${offer.merchant_id}, "amount": ${offer.amount}, "price": ${offer.price}, "shipping_time_standard": ${offer.shipping_time.standard}, "shipping_time_prime": ${offer.shipping_time.prime.getOrElse(0)}, "prime": ${offer.prime}, "signature": "${offer.signature.getOrElse("")}", "http_code": 451, "timestamp": "${new DateTime()}"}"""))
+      kafka_producer.send(KafkaProducerRecord("restockOffer", s"""{"offer_id": $offer_id, "amount": $amount, "signature": "$signature", "http_code": 451, "timestamp": "${new DateTime()}"}"""))
       Failure("Invalid signature", 451)
     }
   }
