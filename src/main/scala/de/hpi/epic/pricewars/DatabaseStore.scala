@@ -185,7 +185,10 @@ object DatabaseStore {
   }
 
   def updateOffer(offer_id: Long, offer: Offer): Result[Offer] = {
-    val validSignature: Boolean = ProducerConnector.validSignature(offer.uid, offer.amount, offer.signature.getOrElse(""), producer_key)
+    // val validSignature: Boolean = ProducerConnector.validSignature(offer.uid, offer.amount, offer.signature.getOrElse(""), producer_key)
+    // amount = ${offer.amount},
+
+    val validSignature = true
 
     if (validSignature) {
       val res = Try {
@@ -195,7 +198,6 @@ object DatabaseStore {
         product_id = ${offer.product_id},
         quality = ${offer.quality},
         merchant_id = ${offer.merchant_id},
-        amount = ${offer.amount},
         price = ${offer.price},
         shipping_time_standard = ${offer.shipping_time.standard},
         shipping_time_prime = ${offer.shipping_time.prime},
