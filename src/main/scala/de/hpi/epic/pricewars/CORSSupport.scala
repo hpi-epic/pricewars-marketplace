@@ -1,6 +1,6 @@
 package de.hpi.epic.pricewars
 
-import spray.http.{AllOrigins, HttpMethod, HttpMethods}
+import spray.http.{AllOrigins, HttpMethod, HttpMethods, HttpResponse}
 import spray.http.HttpHeaders._
 import spray.routing._
 
@@ -17,8 +17,19 @@ trait CORSSupport {
     " Referer, User-Agent, Overwrite, Destination, Depth, X-Token, X-File-Size, If-Modified-Since, X-File-Name, Cache-Control")
 
   def cors[T]: Directive0 = mapRequestContext { ctx =>
-    ctx.withHttpResponseHeadersMapped { headers =>
-      allowOriginHeader :: allowMethodHeader :: allowHeadersHeader ::headers
+    ctx.withRouteResponseHandling({
+      //It is an option request for a resource that responds to some other method
+      case Rejected(x) if ctx.request.method.equals(HttpMethods.OPTIONS) && x.exists(_.isInstanceOf[MethodRejection]) => {
+        val allowedMethods: List[HttpMethod] = x.filter(_.isInstanceOf[MethodRejection]).map(rejection => {
+          rejection.asInstanceOf[MethodRejection].supported
+        })
+        ctx.complete(HttpResponse().withHeaders(
+          `Access-Control-Allow-Methods`(HttpMethods.OPTIONS, allowedMethods: _*) ::
+            List(allowOriginHeader, allowHeadersHeader)
+        ))
+      }
+    }).withHttpResponseHeadersMapped { headers =>
+      allowOriginHeader :: allowMethodHeader :: allowHeadersHeader :: headers
     }
   }
 }
