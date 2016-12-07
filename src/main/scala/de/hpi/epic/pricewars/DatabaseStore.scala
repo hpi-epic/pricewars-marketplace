@@ -72,7 +72,7 @@ object DatabaseStore {
           ${offer.amount},
           ${offer.price},
           ${offer.shipping_time.standard},
-          ${offer.shipping_time.prime},
+          ${offer.shipping_time.prime.getOrElse(None)},
           ${offer.prime}
       )""".updateAndReturnGeneratedKey.apply()
       })
