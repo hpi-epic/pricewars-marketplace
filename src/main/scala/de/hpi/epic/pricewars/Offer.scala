@@ -27,7 +27,8 @@ case class OfferPatch (uid: Option[Long] = None,
                        amount: Option[Int] = None,
                        price: Option[BigDecimal] = None,
                        shipping_time: Option[ShippingTime] = None,
-                       prime: Option[Boolean] = None )
+                       prime: Option[Boolean] = None,
+                       signature: Option[String])
 
 case class ShippingTime ( standard: Int,
                           prime: Option[Int] = None )

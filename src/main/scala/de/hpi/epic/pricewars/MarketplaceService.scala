@@ -74,10 +74,7 @@ trait MarketplaceService extends HttpService with CORSSupport {
           patch {
             entity(as[OfferPatch]) { offer =>
               complete {
-                offer.amount match {
-                  case Some(amount) => DatabaseStore.restockOffer(id, amount, "")
-                  case _ => StatusCodes.InternalServerError -> "no amount specified"
-                }
+                DatabaseStore.restockOffer(id, offer.amount.getOrElse(0), offer.signature.getOrElse(""))
               }
             }
           }
