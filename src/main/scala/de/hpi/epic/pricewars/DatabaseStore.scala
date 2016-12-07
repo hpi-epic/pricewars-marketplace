@@ -10,9 +10,6 @@ import org.joda.time.DateTime
 
 import scala.util.Try
 
-//import java.io.File
-//import com.typesafe.config.{ Config, ConfigFactory }
-
 object DatabaseStore {
   DBs.setupAll()
 
@@ -57,17 +54,9 @@ object DatabaseStore {
   }
 
   val config = ConfigFactory.load
-  val kafka_producer = KafkaProducer(Conf(config, new StringSerializer, new StringSerializer))
 
-  // TODO: implementing config file
-  // be sure to adapt deployment script
-  //val configPath = System.getProperty("resources/")
-  //val config = ConfigFactory.parseFile(new File(configPath + "config.ini"))
-  //config.getString("producer_url")
-
-  // TODO: use a config.ini file for those settings
-  val producer_url: String = "http://vm-mpws2016hp1-03.eaalab.hpi.uni-potsdam.de"
-  val producer_key: String = ProducerConnector.getProducerKey(producer_url)
+  val kafka_producer = KafkaProducer(Conf(config.getConfig("kafka"), new StringSerializer, new StringSerializer))
+  val producer_key: String = ProducerConnector.getProducerKey(config.getString("producer_url"))
 
   def addOffer(offer: Offer): Result[Offer] = {
     val validSignature: Boolean = ProducerConnector.validSignature(offer.uid, offer.amount, offer.signature.getOrElse(""), producer_key)
