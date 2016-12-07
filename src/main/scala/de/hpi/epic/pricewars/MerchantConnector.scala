@@ -31,6 +31,13 @@ object MerchantConnector {
       println("kill merchant: " + merchant.algorithm_name)
       DatabaseStore.deleteMerchant(merchant.merchant_id.get)
     }
-    request.onSuccess{ case _ => println("ok")}
+    request.onSuccess{ case HttpResponse(status, _, _, _) => {
+      if (status == StatusCodes.PreconditionRequired) {
+        println("merchant requested to be deleted: " + merchant.algorithm_name)
+        DatabaseStore.deleteMerchant(merchant.merchant_id.get)
+      } else {
+        println("ok")
+      }
+    }}
   }
 }

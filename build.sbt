@@ -17,6 +17,7 @@ libraryDependencies ++= {
   val logbackV = "1.1.3"
   val kafkaV = "0.10.0.0"
   val scalaxmlV = "1.0.6"
+  val commonsCodecV = "1.10"
 
   Seq(
     "io.spray"                %%  "spray-servlet"             % sprayV,
@@ -33,7 +34,7 @@ libraryDependencies ++= {
     "ch.qos.logback"          %   "logback-classic"           % logbackV,
     "net.cakesolutions"       %% "scala-kafka-client-akka"    % kafkaV,
     "org.scala-lang.modules"  %%  "scala-xml"                 % scalaxmlV,
-    "commons-codec"           %  "commons-codec"              % "1.10"
+    "commons-codec"           %  "commons-codec"              % commonsCodecV
   )
 }
 
