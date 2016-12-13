@@ -1,7 +1,13 @@
 FROM hseeberger/scala-sbt:latest
-ADD . /marketplace
-WORKDIR /marketplace
-RUN apt-get install -y postgres
-RUN service postgres start
-RUN createdb marketplace
-CMD sbt ~container:start
+
+ENV APP_HOME /marketplace
+RUN mkdir $APP_HOME
+WORKDIR $APP_HOME
+
+ADD . $APP_HOME
+
+RUN mv -f src/main/resources/application.deployment.conf src/main/resources/application.conf
+
+RUN sbt compile
+
+CMD ["./wait-for-it.sh", "db:5432", "--", "sbt", "~tomcat:start"]
