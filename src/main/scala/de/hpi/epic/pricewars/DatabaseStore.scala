@@ -56,10 +56,9 @@ object DatabaseStore {
   val config = ConfigFactory.load
 
   val kafka_producer = KafkaProducer(Conf(config.getConfig("kafka"), new StringSerializer, new StringSerializer))
-  val producer_key: String = ProducerConnector.getProducerKey(config.getString("producer_url"))
 
   def addOffer(offer: Offer): Result[Offer] = {
-    val validSignature: Boolean = ProducerConnector.validSignature(offer.uid, offer.amount, offer.signature.getOrElse(""), producer_key)
+    val validSignature: Boolean = ProducerConnector.validSignature(offer.uid, offer.amount, offer.signature.getOrElse(""))
 
     if (validSignature) {
       val res = Try(DB localTx { implicit session =>
@@ -238,7 +237,7 @@ object DatabaseStore {
     }
     val offer = offerOption.get
 
-    val validSignature: Boolean = ProducerConnector.validSignature(offer.uid, amount, signature, producer_key)
+    val validSignature: Boolean = ProducerConnector.validSignature(offer.uid, amount, signature)
 
     if (validSignature) {
       val res = Try {

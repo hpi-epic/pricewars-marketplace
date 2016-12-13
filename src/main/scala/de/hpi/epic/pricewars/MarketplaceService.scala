@@ -176,8 +176,24 @@ trait MarketplaceService extends HttpService with CORSSupport {
                   }
                 }
               }
+          } ~
+          path("producer" / "key") {
+            put {
+              complete {
+                val old_key = ProducerConnector.producer_key.getOrElse("")
+                ProducerConnector.producer_key = ProducerConnector.getProducerKey()
+                if (ProducerConnector.producer_key.isDefined) {
+                  StatusCode.int2StatusCode(200) -> s"""{"old producer key": "$old_key", "new producer key": "${ProducerConnector.producer_key.getOrElse("")}"}"""
+                }
+                else {
+                  StatusCode.int2StatusCode(500) -> s"""{"old producer key": "$old_key", "new producer key": "${ProducerConnector.producer_key.getOrElse("")}"}"""
+                }
+              }
+            }
           }
+
       }
+
     }
   }
 }
