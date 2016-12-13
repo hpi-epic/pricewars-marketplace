@@ -14,6 +14,7 @@ import spray.can.Http
 import spray.http.HttpMethods._
 import spray.http._
 import spray.json._
+import org.joda.time.{DateTime, Minutes}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -23,6 +24,7 @@ object ProducerConnector {
 
   val producer_url: String = config.getString("producer_url")
   var producer_key: Option[String] = None
+  var producer_key_updated = new DateTime()
 
   implicit val system: ActorSystem = ActorSystem()
   implicit val timeout: Timeout = Timeout(15.seconds)
@@ -47,6 +49,7 @@ object ProducerConnector {
   def validSignature(uid: Long, amount: Int, signature: String): Boolean = {
     if (producer_key.isEmpty) {
       producer_key = getProducerKey()
+      producer_key_updated = new DateTime()
     }
 
     // TODO: Check for negative amount
@@ -75,9 +78,15 @@ object ProducerConnector {
       }
     } catch {
       case e: Exception => {
-        println("Signature invalid!")
-        println(e)
-        false
+        if (Minutes.minutesBetween(producer_key_updated, new DateTime()).getMinutes > 15) {
+          println("Signature invalid, updating key!")
+          producer_key = None
+          validSignature(uid, amount, signature)
+        } else {
+          println("Signature invalid, last update less than 15 minutes ago!")
+          println(e)
+          false
+        }
       }
     }
   }
