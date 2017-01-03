@@ -9,13 +9,12 @@ scalacOptions := Seq("-unchecked", "-deprecation", "-encoding", "utf8")
 resolvers += Resolver.bintrayRepo("cakesolutions", "maven")
 
 libraryDependencies ++= {
-  val akkaV = "2.4.12"
-  val sprayV = "1.3.2"
+  val akkaV = "2.4.16"
+  val sprayV = "1.3.3"
   val specs2V = "3.8.6"
   val scalikejdbcV = "2.5.0"
-  val slf4jV = "1.7.21"
-  val logbackV = "1.1.3"
-  val kafkaV = "0.10.0.0"
+  val logbackV = "1.1.8"
+  val kafkaV = "0.10.1.1"
   val scalaxmlV = "1.0.6"
   val commonsCodecV = "1.10"
 
