@@ -27,10 +27,17 @@ trait MarketplaceService extends HttpService with CORSSupport {
             }
           } ~
             post {
-              entity(as[Offer]) { offer =>
-                detach() {
-                  complete {
-                    DatabaseStore.addOffer(offer).successHttpCode(StatusCodes.Created)
+              optionalHeaderValueByName(HttpHeaders.Authorization.name) { authorizationHeader =>
+                entity(as[Offer]) { offer =>
+                  detach() {
+                    complete {
+                      val merchant = ValidateLimit.checkMerchant(authorizationHeader)
+                      if (merchant.isDefined) {
+                        DatabaseStore.addOffer(offer, merchant.get).successHttpCode(StatusCodes.Created)
+                      } else {
+                        StatusCode.int2StatusCode(401) -> s"""{"error": "Not authorized or API request limit reached!"}"""
+                      }
+                    }
                   }
                 }
               }
@@ -43,19 +50,33 @@ trait MarketplaceService extends HttpService with CORSSupport {
               }
             } ~
               delete {
-                complete {
-                  val res = DatabaseStore.deleteOffer(id)
-                  res match {
-                    case Success(v) => StatusCodes.NoContent
-                    case f: Failure[Unit] => StatusCode.int2StatusCode(f.code) -> f.toJson.toString()
+                optionalHeaderValueByName(HttpHeaders.Authorization.name) { authorizationHeader =>
+                  complete {
+                    val merchant = ValidateLimit.checkMerchant(authorizationHeader)
+                    if (merchant.isDefined) {
+                      val res = DatabaseStore.deleteOffer(id, merchant.get)
+                      res match {
+                        case Success(v) => StatusCodes.NoContent
+                        case f: Failure[Unit] => StatusCode.int2StatusCode(f.code) -> f.toJson.toString()
+                      }
+                    } else {
+                      StatusCode.int2StatusCode(401) -> s"""{"error": "Not authorized or API request limit reached!"}"""
+                    }
                   }
                 }
               } ~
               put {
-                entity(as[Offer]) { offer =>
-                  detach() {
-                    complete {
-                      DatabaseStore.updateOffer(id, offer)
+                optionalHeaderValueByName(HttpHeaders.Authorization.name) { authorizationHeader =>
+                  entity(as[Offer]) { offer =>
+                    detach() {
+                      complete {
+                        val merchant = ValidateLimit.checkMerchant(authorizationHeader)
+                        if (merchant.isDefined) {
+                          DatabaseStore.updateOffer(id, offer, merchant.get)
+                        } else {
+                          StatusCode.int2StatusCode(401) -> s"""{"error": "Not authorized or API request limit reached!"}"""
+                        }
+                      }
                     }
                   }
                 }
@@ -63,10 +84,17 @@ trait MarketplaceService extends HttpService with CORSSupport {
           } ~
           path("offers" / LongNumber / "buy") { id =>
             post {
-              entity(as[BuyRequest]) { buyRequest =>
-                detach() {
-                  complete {
-                    DatabaseStore.buyOffer(id, buyRequest.price, buyRequest.amount).successHttpCode(StatusCodes.NoContent)
+              optionalHeaderValueByName(HttpHeaders.Authorization.name) { authorizationHeader =>
+                entity(as[BuyRequest]) { buyRequest =>
+                  detach() {
+                    complete {
+                      val consumer = ValidateLimit.checkConsumer(authorizationHeader)
+                      if (consumer.isDefined) {
+                        DatabaseStore.buyOffer(id, buyRequest.price, buyRequest.amount, consumer.get).successHttpCode(StatusCodes.NoContent)
+                      } else {
+                        StatusCode.int2StatusCode(401) -> s"""{"error": "Not authorized or API request limit reached!"}"""
+                      }
+                    }
                   }
                 }
               }
@@ -74,9 +102,16 @@ trait MarketplaceService extends HttpService with CORSSupport {
           } ~
           path("offers" / LongNumber / "restock") { id =>
             patch {
-              entity(as[OfferPatch]) { offer =>
-                complete {
-                  DatabaseStore.restockOffer(id, offer.amount.getOrElse(0), offer.signature.getOrElse(""))
+              optionalHeaderValueByName(HttpHeaders.Authorization.name) { authorizationHeader =>
+                entity(as[OfferPatch]) { offer =>
+                  complete {
+                    val merchant = ValidateLimit.checkMerchant(authorizationHeader)
+                    if (merchant.isDefined) {
+                      DatabaseStore.restockOffer(id, offer.amount.getOrElse(0), offer.signature.getOrElse(""), merchant.get)
+                    } else {
+                      StatusCode.int2StatusCode(401) -> s"""{"error": "Not authorized or API request limit reached!"}"""
+                    }
+                  }
                 }
               }
             }
@@ -97,7 +132,7 @@ trait MarketplaceService extends HttpService with CORSSupport {
                 }
               }
           } ~
-          path("merchants" / LongNumber) { id =>
+          path("merchants" / Rest) { id =>
             get {
               complete {
                 DatabaseStore.getMerchant(id)
@@ -129,7 +164,7 @@ trait MarketplaceService extends HttpService with CORSSupport {
                 }
               }
           } ~
-          path("consumers" / LongNumber) { id =>
+          path("consumers" / Rest) { id =>
             get {
               complete {
                 DatabaseStore.getConsumer(id)
@@ -191,9 +226,19 @@ trait MarketplaceService extends HttpService with CORSSupport {
               }
             }
           }
-
-      }
-
+      } ~
+        path("config") {
+          put {
+            entity(as[Settings]) { settings =>
+              detach() {
+                complete {
+                  ValidateLimit.setLimit(settings.tick, settings.max_req_per_sec)
+                  StatusCode.int2StatusCode(200) -> s"""{}"""
+                }
+              }
+            }
+          }
+        }
     }
   }
 }
