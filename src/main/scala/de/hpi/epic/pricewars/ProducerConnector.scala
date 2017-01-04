@@ -46,7 +46,8 @@ object ProducerConnector {
     }
   }
 
-  def validSignature(uid: Long, amount: Int, signature: String): Boolean = {
+  def validSignature(uid: Long, amount: Int, signature: String, merchant_id: String): Boolean = {
+    // "<product_uid> <amount> <merchant_id> <timestamp>"
     if (producer_key.isEmpty) {
       producer_key = getProducerKey()
       producer_key_updated = new DateTime()
@@ -65,7 +66,7 @@ object ProducerConnector {
     val producer_infos = encrypted_signature.split(" ")
 
     try {
-      if (producer_infos{0}.toLong == uid && producer_infos{1}.toInt == amount) {
+      if (producer_infos{0}.toLong == uid && producer_infos{1}.toInt == amount && producer_infos{2} == merchant_id) {
         val totalAmountUsed = DatabaseStore.getUsedAmountForSignature(signature) + amount
 
         if (totalAmountUsed <= producer_infos{1}.toInt) {
@@ -81,7 +82,7 @@ object ProducerConnector {
         if (Minutes.minutesBetween(producer_key_updated, new DateTime()).getMinutes > 15) {
           println("Signature invalid, updating key!")
           producer_key = None
-          validSignature(uid, amount, signature)
+          validSignature(uid, amount, signature, merchant_id)
         } else {
           println("Signature invalid, last update less than 15 minutes ago!")
           println(e)
