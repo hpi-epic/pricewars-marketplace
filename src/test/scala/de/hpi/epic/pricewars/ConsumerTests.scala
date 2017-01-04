@@ -15,8 +15,8 @@ class ConsumerTests extends Specification with BeforeAfterEach with Specs2RouteT
   def actorRefFactory = system
 
   private val consumers = Seq(
-    Consumer("testvm1:8080", "testuser1", "algo", Some(1)),
-    Consumer("testvm2:8090", "testuser2", "rythm", Some(2))
+    Consumer("testvm1:8080", "testuser1", "algo", Some("hash1"), Some("token1")),
+    Consumer("testvm2:8090", "testuser2", "rythm", Some("hash2"), Some("token2"))
   )
 
   override def before: Unit = {

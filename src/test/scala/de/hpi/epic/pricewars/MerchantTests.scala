@@ -15,8 +15,8 @@ class MerchantTests extends Specification with BeforeAfterEach with Specs2RouteT
   def actorRefFactory = system
 
   private val merchants = Seq(
-    Merchant("testvm1:8080", "testuser1", "algo", Some(1)),
-    Merchant("testvm2:8090", "testuser2", "rythm", Some(2))
+    Merchant("testvm1:8080", "testuser1", "algo", Some("token1"), Some("hash1")),
+    Merchant("testvm2:8090", "testuser2", "rythm", Some("token2"), Some("hash2"))
   )
 
   override def before: Unit = {
