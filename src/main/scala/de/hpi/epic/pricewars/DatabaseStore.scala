@@ -20,7 +20,7 @@ object DatabaseStore {
       sql"""CREATE EXTENSION IF NOT EXISTS pgcrypto;""".execute.apply()
       sql"""CREATE OR REPLACE FUNCTION random_string(length INTEGER)
           RETURNS TEXT AS
-        $$
+        $$$$
         DECLARE
           chars  TEXT [] := '{0,1,2,3,4,5,6,7,8,9,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z,a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z}';
           result TEXT := '';
@@ -35,7 +35,7 @@ object DatabaseStore {
           END LOOP;
           RETURN result;
         END;
-        $$ LANGUAGE plpgsql;""".execute.apply()
+        $$$$ LANGUAGE plpgsql;""".execute.apply()
       sql"""CREATE TABLE IF NOT EXISTS merchants (
         merchant_id TEXT NOT NULL UNIQUE PRIMARY KEY,
         merchant_token TEXT UNIQUE,
