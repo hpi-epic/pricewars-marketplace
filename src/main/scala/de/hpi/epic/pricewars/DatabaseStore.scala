@@ -17,7 +17,7 @@ object DatabaseStore {
     reset()
 
     DB localTx { implicit session =>
-      sql"""CREATE EXTENSION IF NOT EXISTS pgcrypto;"""
+      sql"""CREATE EXTENSION IF NOT EXISTS pgcrypto;""".execute.apply()
       sql"""CREATE OR REPLACE FUNCTION random_string(length INTEGER)
           RETURNS TEXT AS
         $$
@@ -35,7 +35,7 @@ object DatabaseStore {
           END LOOP;
           RETURN result;
         END;
-        $$ LANGUAGE plpgsql;"""
+        $$ LANGUAGE plpgsql;""".execute.apply()
       sql"""CREATE TABLE IF NOT EXISTS merchants (
         merchant_id TEXT NOT NULL UNIQUE PRIMARY KEY,
         merchant_token TEXT UNIQUE,
