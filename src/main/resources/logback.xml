@@ -8,8 +8,8 @@
         </encoder>
     </appender>
 
-    <appender name="ACCESS" class="ch.qos.logback.core.FileAppender">
-        <file>access.log</file>
+    <appender name="ACCESS" class="ch.qos.logback.core.ConsoleAppender">
+        <target>System.out</target>
         <encoder>
             <pattern>%date{ISO8601} %-5level %logger{36} %X{akkaSource} - %msg%n</pattern>
         </encoder>
