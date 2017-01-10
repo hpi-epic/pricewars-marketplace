@@ -14,7 +14,8 @@ object DatabaseStore {
   DBs.setupAll()
 
   def setup(): Unit = {
-    reset()
+    // Enable to reset database on every restart
+    // reset()
 
     DB localTx { implicit session =>
       sql"""CREATE EXTENSION IF NOT EXISTS pgcrypto;""".execute.apply()
