@@ -17,6 +17,14 @@ object ValidateLimit {
   private var limitPerSecond: Double = tick / max_req_per_sec
   private var limit: Double = limitPerSecond * timeToLiveSeconds
 
+  def getTick: Double = {
+    tick
+  }
+
+  def getMaxReqPerSec: Int = {
+    max_req_per_sec
+  }
+
   def setLimit(new_tick: Double, new_max_req_per_sec: Int): Double = {
     tick = new_tick
     max_req_per_sec = new_max_req_per_sec

@@ -258,6 +258,11 @@ trait MarketplaceService extends HttpService with CORSSupport {
           }
       } ~
         path("config") {
+          get {
+            complete {
+              StatusCodes.OK -> s"""{"tick": "${ValidateLimit.getTick}", "max_req_per_sec": "${ValidateLimit.getMaxReqPerSec}"}"""
+            }
+          } ~
           put {
             entity(as[Settings]) { settings =>
               detach() {
