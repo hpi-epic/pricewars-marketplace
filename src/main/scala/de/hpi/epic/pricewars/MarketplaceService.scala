@@ -132,6 +132,17 @@ trait MarketplaceService extends HttpService with CORSSupport {
                 }
               }
           } ~
+          path("merchants" / "token" / Rest) { token =>
+            delete {
+              complete {
+                val res = DatabaseStore.deleteMerchant(token)
+                res match {
+                  case Success(_) => StatusCodes.NoContent
+                  case f: Failure[Unit] => StatusCode.int2StatusCode(f.code) -> f.toJson.toString()
+                }
+              }
+            }
+          } ~
           path("merchants" / Rest) { id =>
             get {
               complete {
@@ -142,7 +153,8 @@ trait MarketplaceService extends HttpService with CORSSupport {
                 optionalHeaderValueByName(HttpHeaders.Authorization.name) { authorizationHeader =>
                   complete {
                     val token = ValidateLimit.getTokenString(authorizationHeader)
-                    val res = DatabaseStore.deleteMerchant(id, token.getOrElse(""))
+                    val merchant = ValidateLimit.getMerchantFromToken(token.get).get
+                    val res = DatabaseStore.deleteMerchant(merchant.merchant_id.get, delete_with_token = false)
                     res match {
                       case Success(_) => StatusCodes.NoContent
                       case f: Failure[Unit] => StatusCode.int2StatusCode(f.code) -> f.toJson.toString()
@@ -167,6 +179,17 @@ trait MarketplaceService extends HttpService with CORSSupport {
                 }
               }
           } ~
+          path("consumers" / "token" / Rest) { token =>
+            delete {
+              complete {
+                val res = DatabaseStore.deleteConsumer(token)
+                res match {
+                  case Success(_) => StatusCodes.NoContent
+                  case f: Failure[Unit] => StatusCode.int2StatusCode(f.code) -> f.toJson.toString()
+                }
+              }
+            }
+          } ~
           path("consumers" / Rest) { id =>
             get {
               complete {
@@ -177,7 +200,8 @@ trait MarketplaceService extends HttpService with CORSSupport {
                 optionalHeaderValueByName(HttpHeaders.Authorization.name) { authorizationHeader =>
                   complete {
                     val token = ValidateLimit.getTokenString(authorizationHeader)
-                    val res = DatabaseStore.deleteConsumer(id, token.getOrElse(""))
+                    val consumer = ValidateLimit.getConsumerFromToken(token.get).get
+                    val res = DatabaseStore.deleteMerchant(consumer.consumer_id.get, delete_with_token = false)
                     res match {
                       case Success(_) => StatusCodes.NoContent
                       case f: Failure[Unit] => StatusCode.int2StatusCode(f.code) -> f.toJson.toString()

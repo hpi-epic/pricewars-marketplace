@@ -28,8 +28,8 @@ object ValidateLimit {
   def checkMerchant(AuthorizationHeader: Option[String]): (Option[Merchant], StatusCode) = {
     val token = getTokenString(AuthorizationHeader)
     if (check(token)) {
-      DatabaseStore.getMerchant(token.get, search_with_token = true) match {
-        case Success(merchant) => (Some(merchant), StatusCodes.OK)
+      getMerchantFromToken(token.get) match {
+        case Some(merchant) => (Some(merchant), StatusCodes.OK)
         case _ => (None, StatusCodes.Unauthorized)
       }
     } else {
@@ -40,12 +40,26 @@ object ValidateLimit {
   def checkConsumer(AuthorizationHeader: Option[String]): (Option[Consumer], StatusCode) = {
     val token = getTokenString(AuthorizationHeader)
     if (check(token)) {
-      DatabaseStore.getConsumer(token.get, search_with_token = true) match {
-        case Success(consumer) => (Some(consumer), StatusCodes.OK)
+      getConsumerFromToken(token.get) match {
+        case Some(consumer) => (Some(consumer), StatusCodes.OK)
         case _ => (None, StatusCodes.Unauthorized)
       }
     } else {
       (None, StatusCodes.TooManyRequests)
+    }
+  }
+
+  def getMerchantFromToken(token: String): Option[Merchant] = {
+    DatabaseStore.getMerchant(token, search_with_token = true) match {
+      case Success(merchant) => Some(merchant)
+      case _ => None
+    }
+  }
+
+  def getConsumerFromToken(token: String): Option[Consumer] = {
+    DatabaseStore.getConsumer(token, search_with_token = true) match {
+      case Success(consumer) => Some(consumer)
+      case _ => None
     }
   }
 

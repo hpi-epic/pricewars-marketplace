@@ -331,12 +331,12 @@ object DatabaseStore {
     }
   }
 
-  def deleteMerchant(merchant_id: String, merchant_token: String, require_token: Boolean = true): Result[Unit] = {
+  def deleteMerchant(delete_parameter: String, delete_with_token: Boolean = true): Result[Unit] = {
     var sql = sql""
-    if (require_token) {
-      sql = sql"DELETE FROM merchants WHERE merchant_id = $merchant_id AND merchant_token = $merchant_token RETURNING merchant_id, NULL AS merchant_token, api_endpoint_url, merchant_name, algorithm_name"
+    if (delete_with_token) {
+      sql = sql"DELETE FROM merchants WHERE merchant_token = $delete_parameter RETURNING merchant_id, NULL AS merchant_token, api_endpoint_url, merchant_name, algorithm_name"
     } else {
-      sql = sql"DELETE FROM merchants WHERE merchant_id = $merchant_id RETURNING merchant_id, NULL AS merchant_token, api_endpoint_url, merchant_name, algorithm_name"
+      sql = sql"DELETE FROM merchants WHERE merchant_id = $delete_parameter RETURNING merchant_id, NULL AS merchant_token, api_endpoint_url, merchant_name, algorithm_name"
     }
     val res = Try(DB localTx { implicit session =>
       sql.map(rs => Merchant(rs)).list.apply().headOption.get.merchant_id.get
@@ -347,12 +347,22 @@ object DatabaseStore {
         Success((): Unit)
       }
       case scala.util.Success(id) if id.length == 0 => {
-        kafka_producer.send(KafkaProducerRecord("deleteMerchant", s"""{"merchant_token": $merchant_token, "http_code": 404, "timestamp": "${new DateTime()}"}"""))
-        Failure(s"No merchant with merchant_token $merchant_token", 404)
+        if (delete_with_token) {
+          kafka_producer.send(KafkaProducerRecord("deleteMerchant", s"""{"merchant_token": $delete_parameter, "http_code": 404, "timestamp": "${new DateTime()}"}"""))
+          Failure(s"No merchant with merchant_token $delete_parameter", 404)
+        } else {
+          kafka_producer.send(KafkaProducerRecord("deleteMerchant", s"""{"merchant_id": $delete_parameter, "http_code": 404, "timestamp": "${new DateTime()}"}"""))
+          Failure(s"No merchant with merchant_id $delete_parameter", 404)
+        }
       }
       case scala.util.Failure(e) => {
-        kafka_producer.send(KafkaProducerRecord("deleteMerchant", s"""{"merchant_token": $merchant_token, "http_code": 500, "timestamp": "${new DateTime()}"}"""))
-        Failure(e.getMessage, 500)
+        if (delete_with_token) {
+          kafka_producer.send(KafkaProducerRecord("deleteMerchant", s"""{"merchant_token": $delete_parameter, "http_code": 500, "timestamp": "${new DateTime()}"}"""))
+          Failure(e.getMessage, 500)
+        } else {
+          kafka_producer.send(KafkaProducerRecord("deleteMerchant", s"""{"merchant_id": $delete_parameter, "http_code": 500, "timestamp": "${new DateTime()}"}"""))
+          Failure(e.getMessage, 500)
+        }
       }
     }
   }
@@ -441,12 +451,12 @@ object DatabaseStore {
     }
   }
 
-  def deleteConsumer(consumer_id: String, consumer_token: String, require_token: Boolean = true): Result[Unit] = {
+  def deleteConsumer(delete_parameter: String, delete_with_token: Boolean = true): Result[Unit] = {
     var sql = sql""
-    if (require_token) {
-      sql = sql"DELETE FROM consumers WHERE consumer_id = $consumer_id AND consumer_token = $consumer_token RETURNING consumer_id, NULL AS consumer_token, api_endpoint_url, consumer_name, description"
+    if (delete_with_token) {
+      sql = sql"DELETE FROM consumers WHERE consumer_token = $delete_parameter RETURNING consumer_id, NULL AS consumer_token, api_endpoint_url, consumer_name, description"
     } else {
-      sql = sql"DELETE FROM consumers WHERE consumer_id = $consumer_id RETURNING consumer_id, NULL AS consumer_token, api_endpoint_url, consumer_name, description"
+      sql = sql"DELETE FROM consumers WHERE consumer_id = $delete_parameter RETURNING consumer_id, NULL AS consumer_token, api_endpoint_url, consumer_name, description"
     }
     val res = Try(DB localTx { implicit session =>
       sql.map(rs => Consumer(rs)).list.apply().headOption.get.consumer_id.get
@@ -457,12 +467,22 @@ object DatabaseStore {
         Success((): Unit)
       }
       case scala.util.Success(id) if id.length == 0 => {
-        kafka_producer.send(KafkaProducerRecord("deleteConsumer", s"""{"consumer_token": $consumer_token, "http_code": 404, "timestamp": "${new DateTime()}"}"""))
-        Failure(s"No consumer with token $consumer_token", 404)
+        if (delete_with_token) {
+          kafka_producer.send(KafkaProducerRecord("deleteConsumer", s"""{"consumer_token": $delete_parameter, "http_code": 404, "timestamp": "${new DateTime()}"}"""))
+          Failure(s"No consumer with token $delete_parameter", 404)
+        } else {
+          kafka_producer.send(KafkaProducerRecord("deleteConsumer", s"""{"consumer_id": $delete_parameter, "http_code": 404, "timestamp": "${new DateTime()}"}"""))
+          Failure(s"No consumer with id $delete_parameter", 404)
+        }
       }
       case scala.util.Failure(e) => {
-        kafka_producer.send(KafkaProducerRecord("deleteConsumer", s"""{"consumer_token": $consumer_token, "http_code": 500, "timestamp": "${new DateTime()}"}"""))
-        Failure(e.getMessage, 500)
+        if (delete_with_token) {
+          kafka_producer.send(KafkaProducerRecord("deleteConsumer", s"""{"consumer_token": $delete_parameter, "http_code": 500, "timestamp": "${new DateTime()}"}"""))
+          Failure(e.getMessage, 500)
+        } else {
+          kafka_producer.send(KafkaProducerRecord("deleteConsumer", s"""{"consumer_id": $delete_parameter, "http_code": 500, "timestamp": "${new DateTime()}"}"""))
+          Failure(e.getMessage, 500)
+        }
       }
     }
   }
