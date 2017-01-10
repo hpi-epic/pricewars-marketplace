@@ -25,12 +25,12 @@ object MerchantConnector {
     )).mapTo[HttpResponse]
     request.onFailure{ case _ =>
       println("kill merchant: " + merchant.algorithm_name)
-      DatabaseStore.deleteMerchant(merchant.merchant_id.get)
+      DatabaseStore.deleteMerchant(merchant.merchant_id.get, merchant.merchant_token.get)
     }
     request.onSuccess{ case HttpResponse(status, _, _, _) => {
       if (status == StatusCodes.PreconditionRequired) {
         println("merchant requested to be deleted: " + merchant.algorithm_name)
-        DatabaseStore.deleteMerchant(merchant.merchant_id.get)
+        DatabaseStore.deleteMerchant(merchant.merchant_id.get, merchant.merchant_token.get)
       } else {
         println("ok")
       }

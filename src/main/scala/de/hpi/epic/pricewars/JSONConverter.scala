@@ -10,7 +10,7 @@ object JSONConverter extends DefaultJsonProtocol with SprayJsonSupport {
   implicit val merchantFormat = jsonFormat5(Merchant.apply)
   implicit val consumerFormat = jsonFormat5(Consumer.apply)
   implicit val productFormat = jsonFormat3(Product.apply)
-  implicit val buyRequestFormat = jsonFormat4(BuyRequest)
+  implicit val buyRequestFormat = jsonFormat3(BuyRequest)
   implicit val settingsFormat = jsonFormat2(Settings)
   //TODO: write generic formatter
   implicit val offerFailureFormat = jsonFormat2(Failure[Offer])
