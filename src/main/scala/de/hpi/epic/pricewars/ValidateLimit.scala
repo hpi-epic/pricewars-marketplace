@@ -93,7 +93,7 @@ object ValidateLimit {
   }
 
   private def addEntry(key: String): Boolean = {
-    val redis_key = key + new DateTime()
+    val redis_key = key + "---" + new DateTime()
     redis.setex(redis_key, timeToLiveSeconds, 1)
   }
 
