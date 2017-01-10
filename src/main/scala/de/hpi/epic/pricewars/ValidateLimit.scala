@@ -3,6 +3,8 @@ package de.hpi.epic.pricewars
 import com.redis._
 import com.typesafe.config.{Config, ConfigFactory}
 import org.joda.time.DateTime
+import spray.http.StatusCodes.ClientError
+import spray.http.{StatusCode, StatusCodes}
 
 object ValidateLimit {
   val timeToLiveSeconds = 100
@@ -23,27 +25,27 @@ object ValidateLimit {
     limit
   }
 
-  def checkMerchant(AuthorizationHeader: Option[String]): Option[Merchant] = {
+  def checkMerchant(AuthorizationHeader: Option[String]): (Option[Merchant], StatusCode) = {
     val token = getTokenString(AuthorizationHeader)
     if (check(token)) {
       DatabaseStore.getMerchant(token.get, search_with_token = true) match {
-        case Success(merchant) => Some(merchant)
-        case _ => None;
+        case Success(merchant) => (Some(merchant), StatusCodes.OK)
+        case _ => (None, StatusCodes.Unauthorized)
       }
     } else {
-      None
+      (None, StatusCodes.TooManyRequests)
     }
   }
 
-  def checkConsumer(AuthorizationHeader: Option[String]): Option[Consumer] = {
+  def checkConsumer(AuthorizationHeader: Option[String]): (Option[Consumer], StatusCode) = {
     val token = getTokenString(AuthorizationHeader)
     if (check(token)) {
       DatabaseStore.getConsumer(token.get, search_with_token = true) match {
-        case Success(consumer) => Some(consumer)
-        case _ => None;
+        case Success(consumer) => (Some(consumer), StatusCodes.OK)
+        case _ => (None, StatusCodes.Unauthorized)
       }
     } else {
-      None
+      (None, StatusCodes.TooManyRequests)
     }
   }
 

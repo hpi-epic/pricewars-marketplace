@@ -31,11 +31,11 @@ trait MarketplaceService extends HttpService with CORSSupport {
                 entity(as[Offer]) { offer =>
                   detach() {
                     complete {
-                      val merchant = ValidateLimit.checkMerchant(authorizationHeader)
+                      val (merchant, statusCode) = ValidateLimit.checkMerchant(authorizationHeader)
                       if (merchant.isDefined) {
                         DatabaseStore.addOffer(offer, merchant.get).successHttpCode(StatusCodes.Created)
                       } else {
-                        StatusCode.int2StatusCode(401) -> s"""{"error": "Not authorized or API request limit reached!"}"""
+                        statusCode -> s"""{"error": "Not authorized or API request limit reached! Status Code: $statusCode"}"""
                       }
                     }
                   }
@@ -52,7 +52,7 @@ trait MarketplaceService extends HttpService with CORSSupport {
               delete {
                 optionalHeaderValueByName(HttpHeaders.Authorization.name) { authorizationHeader =>
                   complete {
-                    val merchant = ValidateLimit.checkMerchant(authorizationHeader)
+                    val (merchant, statusCode) = ValidateLimit.checkMerchant(authorizationHeader)
                     if (merchant.isDefined) {
                       val res = DatabaseStore.deleteOffer(id, merchant.get)
                       res match {
@@ -60,7 +60,7 @@ trait MarketplaceService extends HttpService with CORSSupport {
                         case f: Failure[Unit] => StatusCode.int2StatusCode(f.code) -> f.toJson.toString()
                       }
                     } else {
-                      StatusCode.int2StatusCode(401) -> s"""{"error": "Not authorized or API request limit reached!"}"""
+                      statusCode -> s"""{"error": "Not authorized or API request limit reached! Status Code: $statusCode"}"""
                     }
                   }
                 }
@@ -70,11 +70,11 @@ trait MarketplaceService extends HttpService with CORSSupport {
                   entity(as[Offer]) { offer =>
                     detach() {
                       complete {
-                        val merchant = ValidateLimit.checkMerchant(authorizationHeader)
+                        val (merchant, statusCode) = ValidateLimit.checkMerchant(authorizationHeader)
                         if (merchant.isDefined) {
                           DatabaseStore.updateOffer(id, offer, merchant.get)
                         } else {
-                          StatusCode.int2StatusCode(401) -> s"""{"error": "Not authorized or API request limit reached!"}"""
+                          statusCode -> s"""{"error": "Not authorized or API request limit reached! Status Code: $statusCode"}"""
                         }
                       }
                     }
@@ -88,11 +88,11 @@ trait MarketplaceService extends HttpService with CORSSupport {
                 entity(as[BuyRequest]) { buyRequest =>
                   detach() {
                     complete {
-                      val consumer = ValidateLimit.checkConsumer(authorizationHeader)
+                      val (consumer, statusCode) = ValidateLimit.checkConsumer(authorizationHeader)
                       if (consumer.isDefined) {
                         DatabaseStore.buyOffer(id, buyRequest.price, buyRequest.amount, consumer.get).successHttpCode(StatusCodes.NoContent)
                       } else {
-                        StatusCode.int2StatusCode(401) -> s"""{"error": "Not authorized or API request limit reached!"}"""
+                        statusCode -> s"""{"error": "Not authorized or API request limit reached! Status Code: $statusCode"}"""
                       }
                     }
                   }
@@ -105,11 +105,11 @@ trait MarketplaceService extends HttpService with CORSSupport {
               optionalHeaderValueByName(HttpHeaders.Authorization.name) { authorizationHeader =>
                 entity(as[OfferPatch]) { offer =>
                   complete {
-                    val merchant = ValidateLimit.checkMerchant(authorizationHeader)
+                    val (merchant, statusCode) = ValidateLimit.checkMerchant(authorizationHeader)
                     if (merchant.isDefined) {
                       DatabaseStore.restockOffer(id, offer.amount.getOrElse(0), offer.signature.getOrElse(""), merchant.get)
                     } else {
-                      StatusCode.int2StatusCode(401) -> s"""{"error": "Not authorized or API request limit reached!"}"""
+                      statusCode -> s"""{"error": "Not authorized or API request limit reached! Status Code: $statusCode"}"""
                     }
                   }
                 }
@@ -141,10 +141,10 @@ trait MarketplaceService extends HttpService with CORSSupport {
               delete {
                 optionalHeaderValueByName(HttpHeaders.Authorization.name) { authorizationHeader =>
                   complete {
-                    var token = ValidateLimit.getTokenString(authorizationHeader)
+                    val token = ValidateLimit.getTokenString(authorizationHeader)
                     val res = DatabaseStore.deleteMerchant(id, token.getOrElse(""))
                     res match {
-                      case Success(v) => StatusCodes.NoContent
+                      case Success(_) => StatusCodes.NoContent
                       case f: Failure[Unit] => StatusCode.int2StatusCode(f.code) -> f.toJson.toString()
                     }
                   }
@@ -176,10 +176,10 @@ trait MarketplaceService extends HttpService with CORSSupport {
               delete {
                 optionalHeaderValueByName(HttpHeaders.Authorization.name) { authorizationHeader =>
                   complete {
-                    var token = ValidateLimit.getTokenString(authorizationHeader)
+                    val token = ValidateLimit.getTokenString(authorizationHeader)
                     val res = DatabaseStore.deleteConsumer(id, token.getOrElse(""))
                     res match {
-                      case Success(v) => StatusCodes.NoContent
+                      case Success(_) => StatusCodes.NoContent
                       case f: Failure[Unit] => StatusCode.int2StatusCode(f.code) -> f.toJson.toString()
                     }
                   }
