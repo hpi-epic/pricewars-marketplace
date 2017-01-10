@@ -53,7 +53,6 @@ object ProducerConnector {
       producer_key_updated = new DateTime()
     }
 
-    // TODO: Check for negative amount
     if (signature.length == 0 || producer_key.isEmpty) {
       return false
     }

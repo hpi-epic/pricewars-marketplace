@@ -108,16 +108,16 @@ object DatabaseStore {
       })
       res match {
         case scala.util.Success(id) => {
-          kafka_producer.send(KafkaProducerRecord("addOffer", s"""{"offer_id": $id, "uid": ${offer.uid}, "product_id": ${offer.product_id}, "quality": ${offer.quality}, "merchant_id": ${offer.merchant_id}, "amount": ${offer.amount}, "price": ${offer.price}, "shipping_time_standard": ${offer.shipping_time.standard}, "shipping_time_prime": ${offer.shipping_time.prime.getOrElse(0)}, "prime": ${offer.prime}, "signature": "${offer.signature.getOrElse("")}", "http_code": 200, "timestamp": "${new DateTime()}"}"""))
-          Success(offer.copy(offer_id = Some(id), signature = None))
+          kafka_producer.send(KafkaProducerRecord("addOffer", s"""{"offer_id": $id, "uid": ${offer.uid}, "product_id": ${offer.product_id}, "quality": ${offer.quality}, "merchant_id": ${merchant.merchant_id.get}, "amount": ${offer.amount}, "price": ${offer.price}, "shipping_time_standard": ${offer.shipping_time.standard}, "shipping_time_prime": ${offer.shipping_time.prime.getOrElse(0)}, "prime": ${offer.prime}, "signature": "${offer.signature.getOrElse("")}", "http_code": 200, "timestamp": "${new DateTime()}"}"""))
+          Success(offer.copy(offer_id = Some(id), signature = None, merchant_id = Some(merchant.merchant_id.get)))
         }
         case scala.util.Failure(e) => {
-          kafka_producer.send(KafkaProducerRecord("addOffer", s"""{"uid": ${offer.uid}, "product_id": ${offer.product_id}, "quality": ${offer.quality}, "merchant_id": ${offer.merchant_id}, "amount": ${offer.amount}, "price": ${offer.price}, "shipping_time_standard": ${offer.shipping_time.standard}, "shipping_time_prime": ${offer.shipping_time.prime.getOrElse(0)}, "prime": ${offer.prime}, "signature": "${offer.signature.getOrElse("")}", "http_code": 500, "timestamp": "${new DateTime()}"}"""))
+          kafka_producer.send(KafkaProducerRecord("addOffer", s"""{"uid": ${offer.uid}, "product_id": ${offer.product_id}, "quality": ${offer.quality}, "merchant_id": ${merchant.merchant_id.get}, "amount": ${offer.amount}, "price": ${offer.price}, "shipping_time_standard": ${offer.shipping_time.standard}, "shipping_time_prime": ${offer.shipping_time.prime.getOrElse(0)}, "prime": ${offer.prime}, "signature": "${offer.signature.getOrElse("")}", "http_code": 500, "timestamp": "${new DateTime()}"}"""))
           Failure(e.getMessage, 500)
         }
       }
     } else {
-      kafka_producer.send(KafkaProducerRecord("addOffer", s"""{"uid": ${offer.uid}, "product_id": ${offer.product_id}, "quality": ${offer.quality}, "merchant_id": ${offer.merchant_id}, "amount": ${offer.amount}, "price": ${offer.price}, "shipping_time_standard": ${offer.shipping_time.standard}, "shipping_time_prime": ${offer.shipping_time.prime.getOrElse(0)}, "prime": ${offer.prime}, "signature": "${offer.signature.getOrElse("")}", "http_code": 451, "timestamp": "${new DateTime()}"}"""))
+      kafka_producer.send(KafkaProducerRecord("addOffer", s"""{"uid": ${offer.uid}, "product_id": ${offer.product_id}, "quality": ${offer.quality}, "merchant_id": ${merchant.merchant_id.get}, "amount": ${offer.amount}, "price": ${offer.price}, "shipping_time_standard": ${offer.shipping_time.standard}, "shipping_time_prime": ${offer.shipping_time.prime.getOrElse(0)}, "prime": ${offer.prime}, "signature": "${offer.signature.getOrElse("")}", "http_code": 451, "timestamp": "${new DateTime()}"}"""))
       Failure("Invalid signature", 451)
     }
   }
@@ -195,7 +195,7 @@ object DatabaseStore {
 
     var merchant: Option[Merchant] = None
     var merchant_id: String = ""
-    offerResult.flatMap(offer => DatabaseStore.getMerchant(offer.merchant_id)) match {
+    offerResult.flatMap(offer => DatabaseStore.getMerchant(offer.merchant_id.get)) match {
       case Success(merchantFound) => {
         merchant = Some(merchantFound)
         merchant_id = merchantFound.merchant_id.getOrElse("")
@@ -234,7 +234,6 @@ object DatabaseStore {
         uid = ${offer.uid},
         product_id = ${offer.product_id},
         quality = ${offer.quality},
-        merchant_id = ${merchant.merchant_id.get},
         price = ${offer.price},
         shipping_time_standard = ${offer.shipping_time.standard},
         shipping_time_prime = ${offer.shipping_time.prime},
@@ -242,7 +241,7 @@ object DatabaseStore {
         WHERE offer_id = $offer_id""".executeUpdate().apply()
           sql"""SELECT offer_id, uid, product_id, quality, merchant_id, amount, price, shipping_time_standard, shipping_time_prime, prime
         FROM offers
-        WHERE offer_id = $offer_id"""
+        WHERE offer_id = $offer_id AND merchant_id = ${merchant.merchant_id.get}"""
             .map(rs => Offer(rs)).list.apply().headOption
         }
       }
