@@ -130,7 +130,7 @@ object DatabaseStore {
       case _ => None
     }
     res1.find(_.isFailure) match {
-      case None => Success(successful) -> StatusCodes.OK
+      case None => Success(successful) -> StatusCodes.Created
       case Some(failure) => failure match {
         case f:Failure[Offer] => Success(successful) -> f.code
       }
