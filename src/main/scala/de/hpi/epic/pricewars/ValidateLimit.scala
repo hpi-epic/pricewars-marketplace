@@ -24,8 +24,9 @@ object ValidateLimit {
   }
 
   def checkMerchant(AuthorizationHeader: Option[String]): Option[Merchant] = {
-    if (check(AuthorizationHeader)) {
-      DatabaseStore.getMerchant(AuthorizationHeader.get, search_with_token = true) match {
+    val token = getTokenString(AuthorizationHeader)
+    if (check(token)) {
+      DatabaseStore.getMerchant(token.get, search_with_token = true) match {
         case Success(merchant) => Some(merchant)
         case _ => None;
       }
@@ -35,8 +36,9 @@ object ValidateLimit {
   }
 
   def checkConsumer(AuthorizationHeader: Option[String]): Option[Consumer] = {
-    if (check(AuthorizationHeader)) {
-      DatabaseStore.getConsumer(AuthorizationHeader.get, search_with_token = true) match {
+    val token = getTokenString(AuthorizationHeader)
+    if (check(token)) {
+      DatabaseStore.getConsumer(token.get, search_with_token = true) match {
         case Success(consumer) => Some(consumer)
         case _ => None;
       }
@@ -52,16 +54,15 @@ object ValidateLimit {
 
     val headerValue: String = AuthorizationHeader.get
     val values = headerValue.split(" ")
-    if (values.length == 2 && values{1} == "Token") {
-      Some(values{2})
+
+    if (values.length == 2 && values{0} == "Token") {
+      Some(values{1})
     } else {
       None
     }
   }
 
-  private def check(AuthorizationHeader: Option[String]): Boolean = {
-    val tokenOption = getTokenString(AuthorizationHeader)
-
+  private def check(tokenOption: Option[String]): Boolean = {
     if (tokenOption.isEmpty) {
       return false
     }
