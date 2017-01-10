@@ -7,6 +7,7 @@ import KafkaProducer.Conf
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.kafka.common.serialization.StringSerializer
 import org.joda.time.DateTime
+import spray.http.{StatusCode, StatusCodes}
 
 import scala.util.Try
 
@@ -120,6 +121,21 @@ object DatabaseStore {
       kafka_producer.send(KafkaProducerRecord("addOffer", s"""{"uid": ${offer.uid}, "product_id": ${offer.product_id}, "quality": ${offer.quality}, "merchant_id": ${merchant.merchant_id.get}, "amount": ${offer.amount}, "price": ${offer.price}, "shipping_time_standard": ${offer.shipping_time.standard}, "shipping_time_prime": ${offer.shipping_time.prime.getOrElse(0)}, "prime": ${offer.prime}, "signature": "${offer.signature.getOrElse("")}", "http_code": 451, "timestamp": "${new DateTime()}"}"""))
       Failure("Invalid signature", 451)
     }
+  }
+
+  def addBulkOffers(offerArray: Array[Offer], merchant: Merchant): (Result[Array[Offer]], StatusCode) = {
+    val res1 = offerArray.map(DatabaseStore.addOffer(_, merchant))
+    val successful = res1.flatMap {
+      case Success(v) => Some(v)
+      case _ => None
+    }
+    res1.find(_.isFailure) match {
+      case None => Success(successful) -> StatusCodes.OK
+      case Some(failure) => failure match {
+        case f:Failure[Offer] => Success(successful) -> f.code
+      }
+    }
+
   }
 
   def deleteOffer(offer_id: Long, merchant: Merchant): Result[Unit] = {

@@ -39,7 +39,20 @@ trait MarketplaceService extends HttpService with CORSSupport {
                       }
                     }
                   }
-                }
+                } ~
+                  entity(as[Array[Offer]]) { offerArray =>
+                    detach() {
+                      complete {
+                        val (merchant, statusCode) = ValidateLimit.checkMerchant(authorizationHeader)
+                        if (merchant.isDefined) {
+                          val (bulkResult, status) = DatabaseStore.addBulkOffers(offerArray, merchant.get)
+                          bulkResult.successHttpCode(status)
+                        } else {
+                          statusCode -> s"""{"error": "Not authorized or API request limit reached! Status Code: $statusCode"}"""
+                        }
+                      }
+                    }
+                  }
               }
             }
         } ~
@@ -255,25 +268,25 @@ trait MarketplaceService extends HttpService with CORSSupport {
                 }
               }
             }
-          }
-      } ~
-        path("config") {
-          get {
-            complete {
-              StatusCodes.OK -> s"""{"tick": "${ValidateLimit.getTick}", "max_req_per_sec": "${ValidateLimit.getMaxReqPerSec}"}"""
-            }
           } ~
-          put {
-            entity(as[Settings]) { settings =>
-              detach() {
-                complete {
-                  ValidateLimit.setLimit(settings.tick, settings.max_req_per_sec)
-                  StatusCode.int2StatusCode(200) -> s"""{}"""
+          path("config") {
+            get {
+              complete {
+                StatusCodes.OK -> s"""{"tick": "${ValidateLimit.getTick}", "max_req_per_sec": "${ValidateLimit.getMaxReqPerSec}"}"""
+              }
+            } ~
+              put {
+                entity(as[Settings]) { settings =>
+                  detach() {
+                    complete {
+                      ValidateLimit.setLimit(settings.tick, settings.max_req_per_sec)
+                      StatusCode.int2StatusCode(200) -> s"""{}"""
+                    }
+                  }
                 }
               }
-            }
           }
-        }
+      }
     }
   }
 }
