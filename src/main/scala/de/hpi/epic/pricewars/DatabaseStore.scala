@@ -128,15 +128,15 @@ object DatabaseStore {
     })
     res match {
       case scala.util.Success(v) if v == 1 => {
-        kafka_producer.send(KafkaProducerRecord("deleteOffer", s"""{"offer_id": $offer_id, "merchant_id": ${merchant.merchant_id.get}, "http_code": 200, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("deleteOffer", s"""{"offer_id": $offer_id, "merchant_id": "${merchant.merchant_id.get}", "http_code": 200, "timestamp": "${new DateTime()}"}"""))
         Success((): Unit)
       }
       case scala.util.Success(v) if v != 1 => {
-        kafka_producer.send(KafkaProducerRecord("deleteOffer", s"""{"offer_id": $offer_id, "merchant_id": ${merchant.merchant_id.get}, "http_code": 404, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("deleteOffer", s"""{"offer_id": $offer_id, "merchant_id": "${merchant.merchant_id.get}", "http_code": 404, "timestamp": "${new DateTime()}"}"""))
         Failure(s"No product with id $offer_id", 404)
       }
       case scala.util.Failure(e) => {
-        kafka_producer.send(KafkaProducerRecord("deleteOffer", s"""{"offer_id": $offer_id, "merchant_id": ${merchant.merchant_id.get}, "http_code": 500, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("deleteOffer", s"""{"offer_id": $offer_id, "merchant_id": "${merchant.merchant_id.get}", "http_code": 500, "timestamp": "${new DateTime()}"}"""))
         Failure(e.getMessage, 500)
       }
     }
@@ -206,16 +206,16 @@ object DatabaseStore {
     })
     res match {
       case scala.util.Success(remaining_offer) if remaining_offer.isDefined => {
-        kafka_producer.send(KafkaProducerRecord("buyOffer", s"""{"offer_id": $offer_id, "uid": ${offer.get.uid}, "product_id": ${offer.get.product_id}, "quality": ${offer.get.quality}, "price": $price, "amount": $amount, "merchant_id": $merchant_id, "left_in_stock": ${remaining_offer.get.amount}, "consumer_id": ${consumer.consumer_id.get}, "http_code": 200, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("buyOffer", s"""{"offer_id": $offer_id, "uid": ${offer.get.uid}, "product_id": ${offer.get.product_id}, "quality": ${offer.get.quality}, "price": $price, "amount": $amount, "merchant_id": "$merchant_id", "left_in_stock": ${remaining_offer.get.amount}, "consumer_id": "${consumer.consumer_id.get}", "http_code": 200, "timestamp": "${new DateTime()}"}"""))
         MerchantConnector.notifyMerchant(merchant.get, offer_id, amount, price)
         Success((): Unit)
       }
       case scala.util.Success(v) if v.isEmpty => {
-        kafka_producer.send(KafkaProducerRecord("buyOffer", s"""{"offer_id": $offer_id, "uid": ${offer.get.uid}, "product_id": ${offer.get.product_id}, "quality": ${offer.get.quality}, "price": $price, "amount": $amount, "merchant_id": $merchant_id, "left_in_stock": 0, "consumer_id": ${consumer.consumer_id.get}, "http_code": 409, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("buyOffer", s"""{"offer_id": $offer_id, "uid": ${offer.get.uid}, "product_id": ${offer.get.product_id}, "quality": ${offer.get.quality}, "price": $price, "amount": $amount, "merchant_id": "$merchant_id", "left_in_stock": 0, "consumer_id": "${consumer.consumer_id.get}", "http_code": 409, "timestamp": "${new DateTime()}"}"""))
         Failure("price changed or product not found", 409)
       } // TODO: Check why the update failed
       case scala.util.Failure(_) => {
-        kafka_producer.send(KafkaProducerRecord("buyOffer", s"""{"offer_id": $offer_id, "uid": ${offer.get.uid}, "product_id": ${offer.get.product_id}, "quality": ${offer.get.quality}, "price": $price, "amount": $amount, "merchant_id": $merchant_id, "left_in_stock": 0, "consumer_id": ${consumer.consumer_id.get}, "http_code": 410, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("buyOffer", s"""{"offer_id": $offer_id, "uid": ${offer.get.uid}, "product_id": ${offer.get.product_id}, "quality": ${offer.get.quality}, "price": $price, "amount": $amount, "merchant_id": "$merchant_id", "left_in_stock": 0, "consumer_id": "${consumer.consumer_id.get}", "http_code": 410, "timestamp": "${new DateTime()}"}"""))
         Failure("out of stock", 410)
       }
     }
@@ -343,24 +343,24 @@ object DatabaseStore {
     })
     res match {
       case scala.util.Success(id) if id.length > 0 => {
-        kafka_producer.send(KafkaProducerRecord("deleteMerchant", s"""{"merchant_id": $id, "http_code": 200, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("deleteMerchant", s"""{"merchant_id": "$id", "http_code": 200, "timestamp": "${new DateTime()}"}"""))
         Success((): Unit)
       }
       case scala.util.Success(id) if id.length == 0 => {
         if (delete_with_token) {
-          kafka_producer.send(KafkaProducerRecord("deleteMerchant", s"""{"merchant_token": $delete_parameter, "http_code": 404, "timestamp": "${new DateTime()}"}"""))
+          kafka_producer.send(KafkaProducerRecord("deleteMerchant", s"""{"merchant_token": "$delete_parameter", "http_code": 404, "timestamp": "${new DateTime()}"}"""))
           Failure(s"No merchant with merchant_token $delete_parameter", 404)
         } else {
-          kafka_producer.send(KafkaProducerRecord("deleteMerchant", s"""{"merchant_id": $delete_parameter, "http_code": 404, "timestamp": "${new DateTime()}"}"""))
+          kafka_producer.send(KafkaProducerRecord("deleteMerchant", s"""{"merchant_id": "$delete_parameter", "http_code": 404, "timestamp": "${new DateTime()}"}"""))
           Failure(s"No merchant with merchant_id $delete_parameter", 404)
         }
       }
       case scala.util.Failure(e) => {
         if (delete_with_token) {
-          kafka_producer.send(KafkaProducerRecord("deleteMerchant", s"""{"merchant_token": $delete_parameter, "http_code": 500, "timestamp": "${new DateTime()}"}"""))
+          kafka_producer.send(KafkaProducerRecord("deleteMerchant", s"""{"merchant_token": "$delete_parameter", "http_code": 500, "timestamp": "${new DateTime()}"}"""))
           Failure(e.getMessage, 500)
         } else {
-          kafka_producer.send(KafkaProducerRecord("deleteMerchant", s"""{"merchant_id": $delete_parameter, "http_code": 500, "timestamp": "${new DateTime()}"}"""))
+          kafka_producer.send(KafkaProducerRecord("deleteMerchant", s"""{"merchant_id": "$delete_parameter", "http_code": 500, "timestamp": "${new DateTime()}"}"""))
           Failure(e.getMessage, 500)
         }
       }
@@ -402,24 +402,24 @@ object DatabaseStore {
     })
     res match {
       case scala.util.Success(Some(v)) => {
-        kafka_producer.send(KafkaProducerRecord("getMerchant", s"""{"merchant_id": ${v.merchant_id.get}, "http_code": 200, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("getMerchant", s"""{"merchant_id": "${v.merchant_id.get}", "http_code": 200, "timestamp": "${new DateTime()}"}"""))
         Success(v)
       }
       case scala.util.Success(None) => {
         if (!search_with_token) {
-          kafka_producer.send(KafkaProducerRecord("getMerchant", s"""{"merchant_id": $search_parameter, "http_code": 404, "timestamp": "${new DateTime()}"}"""))
+          kafka_producer.send(KafkaProducerRecord("getMerchant", s"""{"merchant_id": "$search_parameter", "http_code": 404, "timestamp": "${new DateTime()}"}"""))
           Failure(s"No merchant with key $search_parameter found", 404)
         } else {
-          kafka_producer.send(KafkaProducerRecord("getMerchant", s"""{"merchant_token": $search_parameter, "http_code": 404, "timestamp": "${new DateTime()}"}"""))
+          kafka_producer.send(KafkaProducerRecord("getMerchant", s"""{"merchant_token": "$search_parameter", "http_code": 404, "timestamp": "${new DateTime()}"}"""))
           Failure(s"No merchant with token $search_parameter found", 404)
         }
       }
       case scala.util.Failure(e) => {
         if (!search_with_token) {
-          kafka_producer.send(KafkaProducerRecord("getMerchant", s"""{"merchant_id": $search_parameter, "http_code": 500, "timestamp": "${new DateTime()}"}"""))
+          kafka_producer.send(KafkaProducerRecord("getMerchant", s"""{"merchant_id": "$search_parameter", "http_code": 500, "timestamp": "${new DateTime()}"}"""))
           Failure(e.getMessage, 500)
         } else {
-          kafka_producer.send(KafkaProducerRecord("getMerchant", s"""{"merchant_token": $search_parameter, "http_code": 500, "timestamp": "${new DateTime()}"}"""))
+          kafka_producer.send(KafkaProducerRecord("getMerchant", s"""{"merchant_token": "$search_parameter", "http_code": 500, "timestamp": "${new DateTime()}"}"""))
           Failure(e.getMessage, 500)
         }
       }
@@ -463,24 +463,24 @@ object DatabaseStore {
     })
     res match {
       case scala.util.Success(id) if id.length > 0 => {
-        kafka_producer.send(KafkaProducerRecord("deleteConsumer", s"""{"consumer_id": $id, "http_code": 200, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("deleteConsumer", s"""{"consumer_id": "$id", "http_code": 200, "timestamp": "${new DateTime()}"}"""))
         Success((): Unit)
       }
       case scala.util.Success(id) if id.length == 0 => {
         if (delete_with_token) {
-          kafka_producer.send(KafkaProducerRecord("deleteConsumer", s"""{"consumer_token": $delete_parameter, "http_code": 404, "timestamp": "${new DateTime()}"}"""))
+          kafka_producer.send(KafkaProducerRecord("deleteConsumer", s"""{"consumer_token": "$delete_parameter", "http_code": 404, "timestamp": "${new DateTime()}"}"""))
           Failure(s"No consumer with token $delete_parameter", 404)
         } else {
-          kafka_producer.send(KafkaProducerRecord("deleteConsumer", s"""{"consumer_id": $delete_parameter, "http_code": 404, "timestamp": "${new DateTime()}"}"""))
+          kafka_producer.send(KafkaProducerRecord("deleteConsumer", s"""{"consumer_id": "$delete_parameter", "http_code": 404, "timestamp": "${new DateTime()}"}"""))
           Failure(s"No consumer with id $delete_parameter", 404)
         }
       }
       case scala.util.Failure(e) => {
         if (delete_with_token) {
-          kafka_producer.send(KafkaProducerRecord("deleteConsumer", s"""{"consumer_token": $delete_parameter, "http_code": 500, "timestamp": "${new DateTime()}"}"""))
+          kafka_producer.send(KafkaProducerRecord("deleteConsumer", s"""{"consumer_token": "$delete_parameter", "http_code": 500, "timestamp": "${new DateTime()}"}"""))
           Failure(e.getMessage, 500)
         } else {
-          kafka_producer.send(KafkaProducerRecord("deleteConsumer", s"""{"consumer_id": $delete_parameter, "http_code": 500, "timestamp": "${new DateTime()}"}"""))
+          kafka_producer.send(KafkaProducerRecord("deleteConsumer", s"""{"consumer_id": "$delete_parameter", "http_code": 500, "timestamp": "${new DateTime()}"}"""))
           Failure(e.getMessage, 500)
         }
       }
@@ -520,24 +520,24 @@ object DatabaseStore {
     })
     res match {
       case scala.util.Success(Some(v)) => {
-        kafka_producer.send(KafkaProducerRecord("getConsumer", s"""{"consumer_id": ${v.consumer_id.get}, "http_code": 200, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("getConsumer", s"""{"consumer_id": "${v.consumer_id.get}", "http_code": 200, "timestamp": "${new DateTime()}"}"""))
         Success(v)
       }
       case scala.util.Success(None) => {
         if (!search_with_token) {
-          kafka_producer.send(KafkaProducerRecord("getConsumer", s"""{"consumer_id": $search_parameter, "http_code": 404, "timestamp": "${new DateTime()}"}"""))
+          kafka_producer.send(KafkaProducerRecord("getConsumer", s"""{"consumer_id": "$search_parameter", "http_code": 404, "timestamp": "${new DateTime()}"}"""))
           Failure(s"No consumer with key $search_parameter found", 404)
         } else {
-          kafka_producer.send(KafkaProducerRecord("getConsumer", s"""{"consumer_token": $search_parameter, "http_code": 404, "timestamp": "${new DateTime()}"}"""))
+          kafka_producer.send(KafkaProducerRecord("getConsumer", s"""{"consumer_token": "$search_parameter", "http_code": 404, "timestamp": "${new DateTime()}"}"""))
           Failure(s"No consumer with token $search_parameter found", 404)
         }
       }
       case scala.util.Failure(e) => {
         if (!search_with_token) {
-          kafka_producer.send(KafkaProducerRecord("getConsumer", s"""{"consumer_id": $search_parameter, "http_code": 500, "timestamp": "${new DateTime()}"}"""))
+          kafka_producer.send(KafkaProducerRecord("getConsumer", s"""{"consumer_id": "$search_parameter", "http_code": 500, "timestamp": "${new DateTime()}"}"""))
           Failure(e.getMessage, 500)
         } else {
-          kafka_producer.send(KafkaProducerRecord("getConsumer", s"""{"consumer_token": $search_parameter, "http_code": 500, "timestamp": "${new DateTime()}"}"""))
+          kafka_producer.send(KafkaProducerRecord("getConsumer", s"""{"consumer_token": "$search_parameter", "http_code": 500, "timestamp": "${new DateTime()}"}"""))
           Failure(e.getMessage, 500)
         }
       }
@@ -551,11 +551,11 @@ object DatabaseStore {
     })
     res match {
       case scala.util.Success(id) => {
-        kafka_producer.send(KafkaProducerRecord("addProduct", s"""{"product_id": $id, "name": ${product.name}, "genre": ${product.genre}, "http_code": 200, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("addProduct", s"""{"product_id": $id, "name": "${product.name}", "genre": "${product.genre}", "http_code": 200, "timestamp": "${new DateTime()}"}"""))
         Success(product.copy(product_id = Some(id)))
       }
       case scala.util.Failure(e) => {
-        kafka_producer.send(KafkaProducerRecord("addProduct", s"""{"name": ${product.name}, "genre": ${product.genre}, "http_code": 500, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("addProduct", s"""{"name": "${product.name}", "genre": "${product.genre}", "http_code": 500, "timestamp": "${new DateTime()}"}"""))
         Failure(e.getMessage, 500)
       }
     }
