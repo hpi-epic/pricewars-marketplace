@@ -45,21 +45,31 @@ object ValidateLimit {
     }
   }
 
-  private def check(AuthorizationHeader: Option[String]): Boolean = {
+  def getTokenString(AuthorizationHeader: Option[String]): Option[String] = {
     if (AuthorizationHeader.isEmpty) {
-      return false
+      return None
     }
 
     val headerValue: String = AuthorizationHeader.get
-
     val values = headerValue.split(" ")
-
     if (values.length == 2 && values{1} == "Token") {
-      if (count(values{2}) < limit) {
-        addEntry(values{2})
-      } else {
-        false
-      }
+      Some(values{2})
+    } else {
+      None
+    }
+  }
+
+  private def check(AuthorizationHeader: Option[String]): Boolean = {
+    val tokenOption = getTokenString(AuthorizationHeader)
+
+    if (tokenOption.isEmpty) {
+      return false
+    }
+
+    val token = tokenOption.get
+
+    if (count(token) < limit) {
+      addEntry(token)
     } else {
       false
     }

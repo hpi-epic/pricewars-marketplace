@@ -139,11 +139,14 @@ trait MarketplaceService extends HttpService with CORSSupport {
               }
             } ~
               delete {
-                complete {
-                  val res = DatabaseStore.deleteMerchant(id)
-                  res match {
-                    case Success(v) => StatusCodes.NoContent
-                    case f: Failure[Unit] => StatusCode.int2StatusCode(f.code) -> f.toJson.toString()
+                optionalHeaderValueByName(HttpHeaders.Authorization.name) { authorizationHeader =>
+                  complete {
+                    var token = ValidateLimit.getTokenString(authorizationHeader)
+                    val res = DatabaseStore.deleteMerchant(id, token.getOrElse(""))
+                    res match {
+                      case Success(v) => StatusCodes.NoContent
+                      case f: Failure[Unit] => StatusCode.int2StatusCode(f.code) -> f.toJson.toString()
+                    }
                   }
                 }
               }
@@ -171,11 +174,14 @@ trait MarketplaceService extends HttpService with CORSSupport {
               }
             } ~
               delete {
-                complete {
-                  val res = DatabaseStore.deleteConsumer(id)
-                  res match {
-                    case Success(v) => StatusCodes.NoContent
-                    case f: Failure[Unit] => StatusCode.int2StatusCode(f.code) -> f.toJson.toString()
+                optionalHeaderValueByName(HttpHeaders.Authorization.name) { authorizationHeader =>
+                  complete {
+                    var token = ValidateLimit.getTokenString(authorizationHeader)
+                    val res = DatabaseStore.deleteConsumer(id, token.getOrElse(""))
+                    res match {
+                      case Success(v) => StatusCodes.NoContent
+                      case f: Failure[Unit] => StatusCode.int2StatusCode(f.code) -> f.toJson.toString()
+                    }
                   }
                 }
               }

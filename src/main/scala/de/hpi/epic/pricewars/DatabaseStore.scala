@@ -331,9 +331,9 @@ object DatabaseStore {
     }
   }
 
-  def deleteMerchant(merchant_token: String): Result[Unit] = {
+  def deleteMerchant(merchant_id: String, merchant_token: String): Result[Unit] = {
     val res = Try(DB localTx { implicit session =>
-      sql"DELETE FROM merchants WHERE merchant_token = $merchant_token RETURNING merchant_id, merchant_token, api_endpoint_url, merchant_name, algorithm_name".map(rs => Merchant(rs)).list.apply().headOption.get.merchant_id.get
+      sql"DELETE FROM merchants WHERE merchant_id = $merchant_id AND merchant_token = $merchant_token RETURNING merchant_id, NULL AS merchant_token, api_endpoint_url, merchant_name, algorithm_name".map(rs => Merchant(rs)).list.apply().headOption.get.merchant_id.get
     })
     res match {
       case scala.util.Success(id) if id.length > 0 => {
@@ -342,7 +342,7 @@ object DatabaseStore {
       }
       case scala.util.Success(id) if id.length == 0 => {
         kafka_producer.send(KafkaProducerRecord("deleteMerchant", s"""{"merchant_token": $merchant_token, "http_code": 404, "timestamp": "${new DateTime()}"}"""))
-        Failure(s"No merchant with id $id", 404)
+        Failure(s"No merchant with merchant_token $merchant_token", 404)
       }
       case scala.util.Failure(e) => {
         kafka_producer.send(KafkaProducerRecord("deleteMerchant", s"""{"merchant_token": $merchant_token, "http_code": 500, "timestamp": "${new DateTime()}"}"""))
@@ -435,9 +435,9 @@ object DatabaseStore {
     }
   }
 
-  def deleteConsumer(consumer_token: String): Result[Unit] = {
+  def deleteConsumer(consumer_id: String, consumer_token: String): Result[Unit] = {
     val res = Try(DB localTx { implicit session =>
-      sql"DELETE FROM consumers WHERE consumer_token = $consumer_token RETURNING consumer_id, consumer_token, api_endpoint_url, consumer_name, description".map(rs => Consumer(rs)).list.apply().headOption.get.consumer_id.get
+      sql"DELETE FROM consumers WHERE consumer_id = $consumer_id AND consumer_token = $consumer_token RETURNING consumer_id, NULL AS consumer_token, api_endpoint_url, consumer_name, description".map(rs => Consumer(rs)).list.apply().headOption.get.consumer_id.get
     })
     res match {
       case scala.util.Success(id) if id.length > 0 => {
