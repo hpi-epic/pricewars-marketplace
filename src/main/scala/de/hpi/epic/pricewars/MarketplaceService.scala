@@ -31,7 +31,7 @@ trait MarketplaceService extends HttpService with CORSSupport {
                 entity(as[Offer]) { offer =>
                   detach() {
                     complete {
-                      val merchant = ValidateLimit.getMerchantFromToken(authorizationHeader)
+                      val merchant = ValidateLimit.getMerchantFromToken(authorizationHeader.getOrElse(""))
                       val statusCode = StatusCodes.Unauthorized
                       if (merchant.isDefined) {
                         DatabaseStore.addOffer(offer, merchant.get).successHttpCode(StatusCodes.Created)
@@ -44,7 +44,7 @@ trait MarketplaceService extends HttpService with CORSSupport {
                   entity(as[Array[Offer]]) { offerArray =>
                     detach() {
                       complete {
-                        val merchant = ValidateLimit.getMerchantFromToken(authorizationHeader)
+                        val merchant = ValidateLimit.getMerchantFromToken(authorizationHeader.getOrElse(""))
                         val statusCode = StatusCodes.Unauthorized
                         if (merchant.isDefined) {
                           val (bulkResult, status) = DatabaseStore.addBulkOffers(offerArray, merchant.get)
@@ -120,7 +120,7 @@ trait MarketplaceService extends HttpService with CORSSupport {
               optionalHeaderValueByName(HttpHeaders.Authorization.name) { authorizationHeader =>
                 entity(as[OfferPatch]) { offer =>
                   complete {
-                    val merchant = ValidateLimit.getMerchantFromToken(authorizationHeader)
+                    val merchant = ValidateLimit.getMerchantFromToken(authorizationHeader.getOrElse(""))
                     val statusCode = StatusCodes.Unauthorized
                     if (merchant.isDefined) {
                       DatabaseStore.restockOffer(id, offer.amount.getOrElse(0), offer.signature.getOrElse(""), merchant.get)
