@@ -125,14 +125,14 @@ object DatabaseStore {
 
   def addBulkOffers(offerArray: Array[Offer], merchant: Merchant): (Result[Array[Offer]], StatusCode) = {
     val res1 = offerArray.map(DatabaseStore.addOffer(_, merchant))
-    val successful = res1.flatMap {
-      case Success(v) => Some(v)
-      case _ => None
-    }
     res1.find(_.isFailure) match {
-      case None => Success(successful) -> StatusCodes.Created
+      case None => Success(res1.map(_.get)) -> StatusCodes.Created
       case Some(failure) => failure match {
-        case f:Failure[Offer] => Success(successful) -> f.code
+        case f:Failure[Offer] => Success(
+          res1.flatMap {
+            case Success(v) => Some(v)
+            case _ => None
+          }) -> f.code
       }
     }
 

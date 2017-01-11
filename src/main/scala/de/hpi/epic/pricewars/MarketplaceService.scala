@@ -31,12 +31,10 @@ trait MarketplaceService extends HttpService with CORSSupport {
                 entity(as[Offer]) { offer =>
                   detach() {
                     complete {
-                      val merchant = ValidateLimit.getMerchantFromToken(authorizationHeader.getOrElse(""))
-                      val statusCode = StatusCodes.Unauthorized
-                      if (merchant.isDefined) {
-                        DatabaseStore.addOffer(offer, merchant.get).successHttpCode(StatusCodes.Created)
-                      } else {
-                        statusCode -> s"""{"error": "Not authorized or API request limit reached! Status Code: $statusCode"}"""
+                      //TODO: use Result and `map` instead of converting to Option and `match`
+                      ValidateLimit.getMerchantFromToken(authorizationHeader.getOrElse("")) match {
+                        case Some(merchant) => DatabaseStore.addOffer(offer, merchant).successHttpCode(StatusCodes.Created)
+                        case None => StatusCodes.Unauthorized -> s"""{"error": "Not authorized or API request limit reached! Status Code: ${StatusCodes.Unauthorized}"}"""
                       }
                     }
                   }
