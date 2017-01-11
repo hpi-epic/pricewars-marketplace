@@ -31,7 +31,8 @@ trait MarketplaceService extends HttpService with CORSSupport {
                 entity(as[Offer]) { offer =>
                   detach() {
                     complete {
-                      val (merchant, statusCode) = ValidateLimit.checkMerchant(authorizationHeader)
+                      val merchant = ValidateLimit.getMerchantFromToken(authorizationHeader)
+                      val statusCode = StatusCodes.Unauthorized
                       if (merchant.isDefined) {
                         DatabaseStore.addOffer(offer, merchant.get).successHttpCode(StatusCodes.Created)
                       } else {
@@ -43,7 +44,8 @@ trait MarketplaceService extends HttpService with CORSSupport {
                   entity(as[Array[Offer]]) { offerArray =>
                     detach() {
                       complete {
-                        val (merchant, statusCode) = ValidateLimit.checkMerchant(authorizationHeader)
+                        val merchant = ValidateLimit.getMerchantFromToken(authorizationHeader)
+                        val statusCode = StatusCodes.Unauthorized
                         if (merchant.isDefined) {
                           val (bulkResult, status) = DatabaseStore.addBulkOffers(offerArray, merchant.get)
                           bulkResult.successHttpCode(status)
@@ -118,7 +120,8 @@ trait MarketplaceService extends HttpService with CORSSupport {
               optionalHeaderValueByName(HttpHeaders.Authorization.name) { authorizationHeader =>
                 entity(as[OfferPatch]) { offer =>
                   complete {
-                    val (merchant, statusCode) = ValidateLimit.checkMerchant(authorizationHeader)
+                    val merchant = ValidateLimit.getMerchantFromToken(authorizationHeader)
+                    val statusCode = StatusCodes.Unauthorized
                     if (merchant.isDefined) {
                       DatabaseStore.restockOffer(id, offer.amount.getOrElse(0), offer.signature.getOrElse(""), merchant.get)
                     } else {
