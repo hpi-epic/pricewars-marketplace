@@ -14,7 +14,7 @@ object ValidateLimit {
   private val redis = new RedisClient(redis_hostname, redis_port)
   private var tick: Double = 10.0
   private var max_req_per_sec: Int = 100
-  private var limitPerSecond: Double = tick / max_req_per_sec
+  private var limitPerSecond: Double = max_req_per_sec / tick
   private var limit: Double = limitPerSecond * timeToLiveSeconds
 
   def getTick: Double = {
@@ -28,7 +28,7 @@ object ValidateLimit {
   def setLimit(new_tick: Double, new_max_req_per_sec: Int): Double = {
     tick = new_tick
     max_req_per_sec = new_max_req_per_sec
-    limitPerSecond = tick / max_req_per_sec
+    limitPerSecond = max_req_per_sec / tick
     limit = limitPerSecond * timeToLiveSeconds
     limit
   }
