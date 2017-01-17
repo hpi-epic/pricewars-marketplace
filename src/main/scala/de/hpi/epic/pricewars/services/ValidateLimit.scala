@@ -13,6 +13,7 @@ object ValidateLimit {
   private val config: Config = ConfigFactory.load
   private val redis_hostname: String = config.getConfig("redis").getString("hostname")
   private val redis_port: Int = config.getConfig("redis").getInt("port")
+  private def redis: RedisClient = new RedisClient(redis_hostname, redis_port)
 
   private val tick = Var(10.0)
   private val max_req_per_sec = Var(100)
@@ -66,13 +67,11 @@ object ValidateLimit {
 
   private def addEntry(key: String): Boolean = {
     val redis_key = key + "---" + new DateTime()
-    val redis = new RedisClient(redis_hostname, redis_port)
     redis.setex(redis_key, timeToLiveSeconds, 1)
   }
 
   private def count(key: String): Int = {
     val redis_key = key + "*"
-    val redis = new RedisClient(redis_hostname, redis_port)
     redis.keys(redis_key) match {
       case Some(s: List[Option[String]]) => s.size
       case None => 0
