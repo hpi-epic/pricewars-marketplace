@@ -32,9 +32,9 @@ trait MarketplaceService extends HttpService with CORSSupport {
                   detach() {
                     complete {
                       //TODO: use Result and `map` instead of converting to Option and `match`
-                      ValidateLimit.getMerchantFromToken(authorizationHeader.getOrElse("")) match {
+                      ValidateLimit.getMerchantFromToken(ValidateLimit.getTokenString(authorizationHeader).getOrElse("")) match {
                         case Some(merchant) => DatabaseStore.addOffer(offer, merchant).successHttpCode(StatusCodes.Created)
-                        case None => StatusCodes.Unauthorized -> s"""{"error": "Not authorized or API request limit reached! Status Code: ${StatusCodes.Unauthorized}"}"""
+                        case None => StatusCodes.Unauthorized -> s"""{"error": "Not authorized! Status Code: ${StatusCodes.Unauthorized}"}"""
                       }
                     }
                   }
@@ -42,13 +42,14 @@ trait MarketplaceService extends HttpService with CORSSupport {
                   entity(as[Array[Offer]]) { offerArray =>
                     detach() {
                       complete {
-                        val merchant = ValidateLimit.getMerchantFromToken(authorizationHeader.getOrElse(""))
+                        val token = ValidateLimit.getTokenString(authorizationHeader)
+                        val merchant = ValidateLimit.getMerchantFromToken(token.getOrElse(""))
                         val statusCode = StatusCodes.Unauthorized
                         if (merchant.isDefined) {
                           val (bulkResult, status) = DatabaseStore.addBulkOffers(offerArray, merchant.get)
                           bulkResult.successHttpCode(status)
                         } else {
-                          statusCode -> s"""{"error": "Not authorized or API request limit reached! Status Code: $statusCode"}"""
+                          statusCode -> s"""{"error": "Not authorized! Status Code: $statusCode"}"""
                         }
                       }
                     }
@@ -118,12 +119,13 @@ trait MarketplaceService extends HttpService with CORSSupport {
               optionalHeaderValueByName(HttpHeaders.Authorization.name) { authorizationHeader =>
                 entity(as[OfferPatch]) { offer =>
                   complete {
-                    val merchant = ValidateLimit.getMerchantFromToken(authorizationHeader.getOrElse(""))
+                    val token = ValidateLimit.getTokenString(authorizationHeader)
+                    val merchant = ValidateLimit.getMerchantFromToken(token.getOrElse(""))
                     val statusCode = StatusCodes.Unauthorized
                     if (merchant.isDefined) {
                       DatabaseStore.restockOffer(id, offer.amount.getOrElse(0), offer.signature.getOrElse(""), merchant.get)
                     } else {
-                      statusCode -> s"""{"error": "Not authorized or API request limit reached! Status Code: $statusCode"}"""
+                      statusCode -> s"""{"error": "Not authorized! Status Code: $statusCode"}"""
                     }
                   }
                 }
