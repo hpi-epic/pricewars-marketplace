@@ -1,4 +1,4 @@
-package de.hpi.epic.pricewars
+package de.hpi.epic.pricewars.utils
 
 import spray.http.StatusCode
 import spray.httpx.marshalling.ToResponseMarshallable

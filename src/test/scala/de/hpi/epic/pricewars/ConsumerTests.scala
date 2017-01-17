@@ -4,7 +4,9 @@ import org.specs2.mutable.Specification
 import spray.testkit.Specs2RouteTest
 import spray.http._
 import StatusCodes._
-import JSONConverter._
+import de.hpi.epic.pricewars.utils.JSONConverter._
+import de.hpi.epic.pricewars.data.Consumer
+import de.hpi.epic.pricewars.services.{DatabaseStore, MarketplaceService}
 
 /**
   * Created by sebastian on 15.11.16

@@ -1,5 +1,6 @@
-package de.hpi.epic.pricewars
+package de.hpi.epic.pricewars.utils
 
+import de.hpi.epic.pricewars.data._
 import spray.httpx.SprayJsonSupport
 import spray.json.{DefaultJsonProtocol, JsonFormat}
 

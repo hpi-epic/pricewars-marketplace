@@ -1,11 +1,13 @@
-package de.hpi.epic.pricewars
+package de.hpi.epic.pricewars.services
 
 import akka.actor.{Actor, ActorContext, ActorLogging}
 import akka.event.Logging
-import de.hpi.epic.pricewars.JSONConverter._
-import de.hpi.epic.pricewars.ResultConverter._
+import de.hpi.epic.pricewars.CORSSupport
+import de.hpi.epic.pricewars.utils.JSONConverter._
+import de.hpi.epic.pricewars.connectors.ProducerConnector
+import de.hpi.epic.pricewars.data._
+import de.hpi.epic.pricewars.utils.ResultConverter._
 import spray.http._
-import spray.json._
 import spray.routing._
 
 class MarketplaceServiceActor extends Actor with ActorLogging with MarketplaceService {

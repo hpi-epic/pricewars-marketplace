@@ -1,11 +1,12 @@
-package de.hpi.epic.pricewars
+package de.hpi.epic.pricewars.services
 
 import com.redis._
 import com.typesafe.config.{Config, ConfigFactory}
+import de.hpi.epic.pricewars.data.{Consumer, Merchant}
+import de.hpi.epic.pricewars.utils.{Failure, Result, Success}
 import org.joda.time.DateTime
 import rx.{Rx, Var}
-import spray.http.StatusCodes.ClientError
-import spray.http.{StatusCode, StatusCodes}
+import spray.http.StatusCodes
 
 object ValidateLimit {
   val timeToLiveSeconds = 100

@@ -1,20 +1,20 @@
-package de.hpi.epic.pricewars
-
+package de.hpi.epic.pricewars.connectors
 
 import javax.crypto.Cipher
 import javax.crypto.spec.SecretKeySpec
 
 import akka.actor.ActorSystem
-import com.typesafe.config.{Config, ConfigFactory}
 import akka.io.IO
 import akka.pattern.ask
 import akka.util.Timeout
+import com.typesafe.config.{Config, ConfigFactory}
+import de.hpi.epic.pricewars.services.DatabaseStore
 import org.apache.commons.codec.binary.Base64
+import org.joda.time.{DateTime, Minutes}
 import spray.can.Http
 import spray.http.HttpMethods._
 import spray.http._
 import spray.json._
-import org.joda.time.{DateTime, Minutes}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._

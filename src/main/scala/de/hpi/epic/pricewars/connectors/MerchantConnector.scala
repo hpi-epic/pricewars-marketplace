@@ -1,14 +1,17 @@
-package de.hpi.epic.pricewars
+package de.hpi.epic.pricewars.connectors
+
+import akka.actor.ActorSystem
+import akka.io.IO
+import akka.pattern.ask
+import akka.util.Timeout
+import com.typesafe.config.{Config, ConfigFactory}
+import de.hpi.epic.pricewars.data.Merchant
+import de.hpi.epic.pricewars.services.DatabaseStore
+import spray.can.Http
+import spray.http.HttpMethods._
+import spray.http._
 
 import scala.concurrent.duration._
-import akka.actor.ActorSystem
-import akka.util.Timeout
-import akka.pattern.ask
-import akka.io.IO
-import spray.can.Http
-import spray.http._
-import HttpMethods._
-import com.typesafe.config.{Config, ConfigFactory}
 
 object MerchantConnector {
 

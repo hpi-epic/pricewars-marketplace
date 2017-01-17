@@ -1,12 +1,16 @@
-package de.hpi.epic.pricewars
+package de.hpi.epic.pricewars.services
 
-import scalikejdbc._
-import scalikejdbc.config._
+import cakesolutions.kafka.KafkaProducer.Conf
 import cakesolutions.kafka.{KafkaProducer, KafkaProducerRecord}
-import KafkaProducer.Conf
 import com.typesafe.config.{Config, ConfigFactory}
+import de.hpi.epic.pricewars.connectors.{MerchantConnector, ProducerConnector}
+import de.hpi.epic.pricewars.data
+import de.hpi.epic.pricewars.data.{Consumer, Merchant, Offer, Product}
+import de.hpi.epic.pricewars.utils.{Failure, Result, Success}
 import org.apache.kafka.common.serialization.StringSerializer
 import org.joda.time.DateTime
+import scalikejdbc._
+import scalikejdbc.config._
 import spray.http.{StatusCode, StatusCodes}
 
 import scala.util.Try
@@ -588,7 +592,7 @@ object DatabaseStore {
     }
   }
 
-  def addProduct(product: Product): Result[Product] = {
+  def addProduct(product: data.Product): Result[data.Product] = {
     val res = Try(DB localTx { implicit session =>
       sql"INSERT INTO products VALUES (DEFAULT, ${product.name}, ${product.genre})"
         .updateAndReturnGeneratedKey.apply()
@@ -625,7 +629,7 @@ object DatabaseStore {
     }
   }
 
-  def getProducts: Result[Seq[Product]] = {
+  def getProducts: Result[Seq[data.Product]] = {
     val res = Try(DB readOnly { implicit session =>
       sql"SELECT product_id, name, genre FROM products"
         .map(rs => Product(rs)).list.apply()
@@ -642,7 +646,7 @@ object DatabaseStore {
     }
   }
 
-  def getProduct(product_id: Long): Result[Product] = {
+  def getProduct(product_id: Long): Result[data.Product] = {
     val res = Try(DB readOnly { implicit session =>
       sql"""SELECT product_id, name, genre
         FROM products
