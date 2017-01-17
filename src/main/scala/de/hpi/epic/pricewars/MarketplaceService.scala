@@ -181,11 +181,7 @@ trait MarketplaceService extends HttpService with CORSSupport {
           path("consumers" / "token" / Rest) { token =>
             delete {
               complete {
-                val res = DatabaseStore.deleteConsumer(token)
-                res match {
-                  case Success(_) => StatusCodes.NoContent
-                  case f: Failure[Unit] => StatusCode.int2StatusCode(f.code) -> f.toJson.toString()
-                }
+                DatabaseStore.deleteConsumer(token).successHttpCode(StatusCodes.NoContent)
               }
             }
           } ~
@@ -199,12 +195,10 @@ trait MarketplaceService extends HttpService with CORSSupport {
               optionalHeaderValueByName(HttpHeaders.Authorization.name) { authorizationHeader =>
                 complete {
                   val token = ValidateLimit.getTokenString(authorizationHeader)
-                  val consumer = DatabaseStore.getConsumerByToken(token.get).get
-                  val res = DatabaseStore.deleteConsumer(consumer.consumer_id.get, delete_with_token = false)
-                  res match {
-                    case Success(_) => StatusCodes.NoContent
-                    case f: Failure[Unit] => StatusCode.int2StatusCode(f.code) -> f.toJson.toString()
-                  }
+                  DatabaseStore
+                    .getConsumerByToken(token.getOrElse(""))
+                    .flatMap(consumer => DatabaseStore.deleteConsumer(consumer.consumer_id.get, delete_with_token = false))
+                    .successHttpCode(StatusCodes.NoContent)
                 }
               }
             }
@@ -233,11 +227,7 @@ trait MarketplaceService extends HttpService with CORSSupport {
             } ~
               delete {
                 complete {
-                  val res = DatabaseStore.deleteProduct(id)
-                  res match {
-                    case Success(v) => StatusCodes.NoContent
-                    case f: Failure[Unit] => StatusCode.int2StatusCode(f.code) -> f.toJson.toString()
-                  }
+                  DatabaseStore.deleteProduct(id).successHttpCode(StatusCodes.NoContent)
                 }
               }
           } ~
