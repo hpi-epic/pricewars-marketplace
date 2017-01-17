@@ -50,7 +50,7 @@ trait MarketplaceService extends HttpService with CORSSupport {
                           val (bulkResult, status) = DatabaseStore.addBulkOffers(offerArray, merchant.get)
                           bulkResult.successHttpCode(status)
                         } else {
-                          statusCode -> s"""{"error": "Not authorized or API request limit reached! Status Code: $statusCode"}"""
+                          statusCode -> s"""{"error": "Not authorized! Status Code: $statusCode"}"""
                         }
                       }
                     }
