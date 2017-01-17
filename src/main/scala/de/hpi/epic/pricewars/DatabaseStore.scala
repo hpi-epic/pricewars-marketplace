@@ -400,6 +400,21 @@ object DatabaseStore {
     }
   }
 
+  def getMerchantByToken(token: String): Result[Merchant] = {
+    val dbResult = Result(DB readOnly { implicit session => {
+      val sqlQuery =
+        sql"""SELECT merchant_id, api_endpoint_url, merchant_name, algorithm_name, NULL AS merchant_token
+             FROM merchants
+             WHERE merchant_token = $token
+           """
+      sqlQuery.map(rs => Merchant(rs)).list.apply().headOption
+    }})
+    dbResult.flatMap {
+      case Some(merchant) => Success(merchant)
+      case None => Failure("Not authorized!", 401)
+    }
+  }
+
   def getMerchant(search_parameter: String, search_with_token: Boolean = false): Result[Merchant] = {
     val res = Try(DB readOnly { implicit session =>
       var sql_query = sql""
@@ -517,6 +532,19 @@ object DatabaseStore {
         kafka_producer.send(KafkaProducerRecord("getConsumers", s"""{"http_code": 500, "timestamp": "${new DateTime()}"}"""))
         Failure(e.getMessage, 500)
       }
+    }
+  }
+
+  def getConsumerByToken(token: String): Result[Consumer] = {
+    val dbResult = Result(DB readOnly { implicit session =>
+      val sqlQuery = sql"""SELECT consumer_id, api_endpoint_url, consumer_name, description, NULL AS consumer_token
+          FROM consumers
+          WHERE consumer_token = $token"""
+      sqlQuery.map(rs => Consumer(rs)).list.apply().headOption
+    })
+    dbResult.flatMap {
+      case Some(consumer) => Success(consumer)
+      case None => Failure("Not authorized!", 401)
     }
   }
 

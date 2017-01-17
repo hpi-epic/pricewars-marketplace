@@ -1,5 +1,7 @@
 package de.hpi.epic.pricewars
 
+import scala.util.control.NonFatal
+
 trait Result[T] {
   self =>
   def isSuccess: Boolean
@@ -18,9 +20,15 @@ trait Result[T] {
 }
 
 object Result {
-  def apply[T](res: T): Result[T] = {
+  /*def apply[T](res: T): Result[T] = {
     Success(res)
-  }
+  }*/
+
+  def apply[T](r: => T): Result[T] =
+    try Success(r) catch {
+      case NonFatal(e) => Failure(e.getMessage, 500)
+    }
+
 }
 
 case class Success[T](value: T) extends Result[T] {
