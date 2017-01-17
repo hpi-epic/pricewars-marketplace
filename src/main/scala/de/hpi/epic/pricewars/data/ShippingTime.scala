@@ -1,6 +1,6 @@
 package de.hpi.epic.pricewars.data
 
-import scalikejdbc.WrappedResultSet
+import scalikejdbc._
 
 /**
   * Created by Jan on 17.01.2017.
