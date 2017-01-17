@@ -17,7 +17,7 @@ libraryDependencies ++= {
   val kafkaV = "0.10.1.1"
   val scalaxmlV = "1.0.6"
   val commonsCodecV = "1.10"
-  val redisClientV = "3.2"
+  val redisClientV = "3.3"
   val scalarxV = "0.3.2"
 
   Seq(
