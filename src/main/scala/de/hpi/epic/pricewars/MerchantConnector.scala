@@ -1,21 +1,23 @@
 package de.hpi.epic.pricewars
 
 import scala.concurrent.duration._
-
 import akka.actor.ActorSystem
 import akka.util.Timeout
 import akka.pattern.ask
 import akka.io.IO
-
 import spray.can.Http
 import spray.http._
 import HttpMethods._
+import com.typesafe.config.{Config, ConfigFactory}
 
 object MerchantConnector {
 
   implicit val system: ActorSystem = ActorSystem()
   implicit val timeout: Timeout = Timeout(15.seconds)
   import system.dispatcher // implicit execution context
+
+  val config: Config = ConfigFactory.load
+  val remove_merchant = config.getBoolean("remove_merchant_on_notification_error")
 
   def notifyMerchant(merchant: Merchant, offer_id: Long, amount: Int, price: BigDecimal) = {
     val json = s"""{"offer_id": $offer_id, "amount": $amount, "price": $price}"""
@@ -24,8 +26,12 @@ object MerchantConnector {
       entity = HttpEntity(MediaTypes.`application/json`, json)
     )).mapTo[HttpResponse]
     request.onFailure{ case _ =>
-      println("kill merchant: " + merchant.algorithm_name)
-      DatabaseStore.deleteMerchant(merchant.merchant_id.get, delete_with_token = false)
+      if (remove_merchant) {
+        println("merchant not responding, killing: " + merchant.algorithm_name)
+        DatabaseStore.deleteMerchant(merchant.merchant_id.get, delete_with_token = false)
+      } else {
+        println("merchant not responding, not killing: " + merchant.algorithm_name)
+      }
     }
     request.onSuccess{ case HttpResponse(status, _, _, _) => {
       if (status == StatusCodes.PreconditionRequired) {
