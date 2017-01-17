@@ -5,7 +5,7 @@ import akka.io.IO
 import akka.pattern.ask
 import akka.util.Timeout
 import com.typesafe.config.{Config, ConfigFactory}
-import de.hpi.epic.pricewars.data.Merchant
+import de.hpi.epic.pricewars.data.{Merchant, Offer}
 import de.hpi.epic.pricewars.services.DatabaseStore
 import spray.can.Http
 import spray.http.HttpMethods._
@@ -22,8 +22,8 @@ object MerchantConnector {
   val config: Config = ConfigFactory.load
   val remove_merchant = config.getBoolean("remove_merchant_on_notification_error")
 
-  def notifyMerchant(merchant: Merchant, offer_id: Long, amount: Int, price: BigDecimal) = {
-    val json = s"""{"offer_id": $offer_id, "amount": $amount, "price": $price}"""
+  def notifyMerchant(merchant: Merchant, offer_id: Long, amount: Int, price: BigDecimal, offer: Offer) = {
+    val json = s"""{"offer_id": $offer_id, "uid": ${offer.uid}, "product_id": ${offer.product_id}, "quality": ${offer.quality}, "amount_sold": $amount, "price_sold": $price, "price": ${offer.price}, "merchant_id": "${merchant.merchant_id.get}", "amount": ${offer.amount}}"""
     val request = (IO(Http) ? HttpRequest(POST,
       Uri(merchant.api_endpoint_url + "/sold"),
       entity = HttpEntity(MediaTypes.`application/json`, json)

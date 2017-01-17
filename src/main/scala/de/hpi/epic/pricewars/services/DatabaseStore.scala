@@ -227,7 +227,7 @@ object DatabaseStore {
     res match {
       case scala.util.Success(remaining_offer) if remaining_offer.isDefined => {
         kafka_producer.send(KafkaProducerRecord("buyOffer", s"""{"offer_id": $offer_id, "uid": ${offer.get.uid}, "product_id": ${offer.get.product_id}, "quality": ${offer.get.quality}, "price": $price, "amount": $amount, "merchant_id": "$merchant_id", "left_in_stock": ${remaining_offer.get.amount}, "consumer_id": "${consumer.consumer_id.get}", "http_code": 200, "timestamp": "${new DateTime()}"}"""))
-        MerchantConnector.notifyMerchant(merchant.get, offer_id, amount, price)
+        MerchantConnector.notifyMerchant(merchant.get, offer_id, amount, price, remaining_offer.get)
         Success((): Unit)
       }
       case scala.util.Success(v) if v.isEmpty => {
