@@ -345,7 +345,7 @@ object DatabaseStore {
           }
         })
         buf ++= s"""}}}"""
-        println(buf.toString)
+        kafka_producer.send(KafkaProducerRecord("marketSituation", buf.toString))
       }
       case scala.util.Failure(e) => {
         println("Unable to fetch current market situation for uid $uid")
