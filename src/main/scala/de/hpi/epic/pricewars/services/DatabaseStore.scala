@@ -1,12 +1,17 @@
-package de.hpi.epic.pricewars
+package de.hpi.epic.pricewars.services
 
-import scalikejdbc._
-import scalikejdbc.config._
+import cakesolutions.kafka.KafkaProducer.Conf
 import cakesolutions.kafka.{KafkaProducer, KafkaProducerRecord}
-import KafkaProducer.Conf
 import com.typesafe.config.{Config, ConfigFactory}
+import de.hpi.epic.pricewars.connectors.{MerchantConnector, ProducerConnector}
+import de.hpi.epic.pricewars.data
+import de.hpi.epic.pricewars.data.{Consumer, Merchant, Offer, Product}
+import de.hpi.epic.pricewars.utils.{Failure, Result, Success}
 import org.apache.kafka.common.serialization.StringSerializer
 import org.joda.time.DateTime
+import scalikejdbc._
+import scalikejdbc.config._
+import spray.http.{StatusCode, StatusCodes}
 
 import scala.util.Try
 
@@ -109,6 +114,7 @@ object DatabaseStore {
       res match {
         case scala.util.Success(id) => {
           kafka_producer.send(KafkaProducerRecord("addOffer", s"""{"offer_id": $id, "uid": ${offer.uid}, "product_id": ${offer.product_id}, "quality": ${offer.quality}, "merchant_id": ${merchant.merchant_id.get}, "amount": ${offer.amount}, "price": ${offer.price}, "shipping_time_standard": ${offer.shipping_time.standard}, "shipping_time_prime": ${offer.shipping_time.prime.getOrElse(0)}, "prime": ${offer.prime}, "signature": "${offer.signature.getOrElse("")}", "http_code": 200, "timestamp": "${new DateTime()}"}"""))
+          logCurrentMarketSituation(offer.uid)
           Success(offer.copy(offer_id = Some(id), signature = None, merchant_id = Some(merchant.merchant_id.get)))
         }
         case scala.util.Failure(e) => {
@@ -120,6 +126,21 @@ object DatabaseStore {
       kafka_producer.send(KafkaProducerRecord("addOffer", s"""{"uid": ${offer.uid}, "product_id": ${offer.product_id}, "quality": ${offer.quality}, "merchant_id": ${merchant.merchant_id.get}, "amount": ${offer.amount}, "price": ${offer.price}, "shipping_time_standard": ${offer.shipping_time.standard}, "shipping_time_prime": ${offer.shipping_time.prime.getOrElse(0)}, "prime": ${offer.prime}, "signature": "${offer.signature.getOrElse("")}", "http_code": 451, "timestamp": "${new DateTime()}"}"""))
       Failure("Invalid signature", 451)
     }
+  }
+
+  def addBulkOffers(offerArray: Array[Offer], merchant: Merchant): (Result[Array[Offer]], StatusCode) = {
+    val res1 = offerArray.map(DatabaseStore.addOffer(_, merchant))
+    res1.find(_.isFailure) match {
+      case None => Success(res1.map(_.get)) -> StatusCodes.Created
+      case Some(failure) => failure match {
+        case f:Failure[Offer] => Success(
+          res1.flatMap {
+            case Success(v) => Some(v)
+            case _ => None
+          }) -> f.code
+      }
+    }
+
   }
 
   def deleteOffer(offer_id: Long, merchant: Merchant): Result[Unit] = {
@@ -207,7 +228,7 @@ object DatabaseStore {
     res match {
       case scala.util.Success(remaining_offer) if remaining_offer.isDefined => {
         kafka_producer.send(KafkaProducerRecord("buyOffer", s"""{"offer_id": $offer_id, "uid": ${offer.get.uid}, "product_id": ${offer.get.product_id}, "quality": ${offer.get.quality}, "price": $price, "amount": $amount, "merchant_id": "$merchant_id", "left_in_stock": ${remaining_offer.get.amount}, "consumer_id": "${consumer.consumer_id.get}", "http_code": 200, "timestamp": "${new DateTime()}"}"""))
-        MerchantConnector.notifyMerchant(merchant.get, offer_id, amount, price)
+        MerchantConnector.notifyMerchant(merchant.get, offer_id, amount, price, remaining_offer.get)
         Success((): Unit)
       }
       case scala.util.Success(v) if v.isEmpty => {
@@ -248,6 +269,7 @@ object DatabaseStore {
       res match {
         case scala.util.Success(Some(v)) => {
           kafka_producer.send(KafkaProducerRecord("updateOffer", s"""{"offer_id": $offer_id, "uid": ${offer.uid}, "product_id": ${offer.product_id}, "quality": ${offer.quality}, "merchant_id": ${merchant.merchant_id.get}, "amount": ${offer.amount}, "price": ${offer.price}, "shipping_time_standard": ${offer.shipping_time.standard}, "shipping_time_prime": ${offer.shipping_time.prime.getOrElse(0)}, "prime": ${offer.prime}, "signature": "${offer.signature.getOrElse("")}", "http_code": 200, "timestamp": "${new DateTime()}"}"""))
+          logCurrentMarketSituation(offer.uid)
           Success(v)
         }
         case scala.util.Success(None) => {
@@ -303,6 +325,31 @@ object DatabaseStore {
     } else {
       kafka_producer.send(KafkaProducerRecord("restockOffer", s"""{"offer_id": $offer_id, "amount": $amount, "signature": "$signature", "merchant_id": ${merchant.merchant_id.get}, "http_code": 451, "timestamp": "${new DateTime()}"}"""))
       Failure("Invalid signature", 451)
+    }
+  }
+
+  def logCurrentMarketSituation(uid: Long) = {
+    val res = Try(DB localTx { implicit session =>
+      sql"""SELECT offer_id, uid, product_id, quality, merchant_id, amount, price, shipping_time_standard, shipping_time_prime, prime
+        FROM offers
+        WHERE uid = $uid""".map(rs => Offer(rs)).list.apply()
+    })
+    res match {
+      case scala.util.Success(list) => {
+        val buf = new StringBuilder
+        buf ++= s"""{"timestamp": "${new DateTime()}", "offers": {"""
+        list.foreach(offer => {
+          buf ++= s""""${offer.merchant_id.get}": {"offer_id": ${offer.offer_id.get}, "uid": ${offer.uid}, "product_id": ${offer.product_id}, "quality": ${offer.quality}, "merchant_id": "${offer.merchant_id.get}", "amount": ${offer.amount}, "price": ${offer.price}, "shipping_time_standard": ${offer.shipping_time.standard}, "shipping_time_prime": ${offer.shipping_time.prime.getOrElse(0)}, "prime": ${offer.prime}"""
+          if (offer != list.last) {
+            buf ++= s"""}, """
+          }
+        })
+        buf ++= s"""}}}"""
+        kafka_producer.send(KafkaProducerRecord("marketSituation", buf.toString))
+      }
+      case scala.util.Failure(e) => {
+        println("Unable to fetch current market situation for uid $uid")
+      }
     }
   }
 
@@ -381,6 +428,21 @@ object DatabaseStore {
         kafka_producer.send(KafkaProducerRecord("getMerchants", s"""{"http_code": 500, "timestamp": "${new DateTime()}"}"""))
         Failure(e.getMessage, 500)
       }
+    }
+  }
+
+  def getMerchantByToken(token: String): Result[Merchant] = {
+    val dbResult = Result(DB readOnly { implicit session => {
+      val sqlQuery =
+        sql"""SELECT merchant_id, api_endpoint_url, merchant_name, algorithm_name, NULL AS merchant_token
+             FROM merchants
+             WHERE merchant_token = $token
+           """
+      sqlQuery.map(rs => Merchant(rs)).list.apply().headOption
+    }})
+    dbResult.flatMap {
+      case Some(merchant) => Success(merchant)
+      case None => Failure("Not authorized!", 401)
     }
   }
 
@@ -504,6 +566,19 @@ object DatabaseStore {
     }
   }
 
+  def getConsumerByToken(token: String): Result[Consumer] = {
+    val dbResult = Result(DB readOnly { implicit session =>
+      val sqlQuery = sql"""SELECT consumer_id, api_endpoint_url, consumer_name, description, NULL AS consumer_token
+          FROM consumers
+          WHERE consumer_token = $token"""
+      sqlQuery.map(rs => Consumer(rs)).list.apply().headOption
+    })
+    dbResult.flatMap {
+      case Some(consumer) => Success(consumer)
+      case None => Failure("Not authorized!", 401)
+    }
+  }
+
   def getConsumer(search_parameter: String, search_with_token: Boolean = false): Result[Consumer] = {
     val res = Try(DB readOnly { implicit session =>
       var sql_query = sql""
@@ -544,7 +619,7 @@ object DatabaseStore {
     }
   }
 
-  def addProduct(product: Product): Result[Product] = {
+  def addProduct(product: data.Product): Result[data.Product] = {
     val res = Try(DB localTx { implicit session =>
       sql"INSERT INTO products VALUES (DEFAULT, ${product.name}, ${product.genre})"
         .updateAndReturnGeneratedKey.apply()
@@ -581,7 +656,7 @@ object DatabaseStore {
     }
   }
 
-  def getProducts: Result[Seq[Product]] = {
+  def getProducts: Result[Seq[data.Product]] = {
     val res = Try(DB readOnly { implicit session =>
       sql"SELECT product_id, name, genre FROM products"
         .map(rs => Product(rs)).list.apply()
@@ -598,7 +673,7 @@ object DatabaseStore {
     }
   }
 
-  def getProduct(product_id: Long): Result[Product] = {
+  def getProduct(product_id: Long): Result[data.Product] = {
     val res = Try(DB readOnly { implicit session =>
       sql"""SELECT product_id, name, genre
         FROM products

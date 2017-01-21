@@ -1,4 +1,4 @@
-package de.hpi.epic.pricewars
+package de.hpi.epic.pricewars.data
 
 import scalikejdbc._
 

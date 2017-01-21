@@ -1,11 +1,13 @@
-package de.hpi.epic.pricewars
+package de.hpi.epic.pricewars.services
 
 import akka.actor.{Actor, ActorContext, ActorLogging}
 import akka.event.Logging
-import de.hpi.epic.pricewars.JSONConverter._
-import de.hpi.epic.pricewars.ResultConverter._
+import de.hpi.epic.pricewars.CORSSupport
+import de.hpi.epic.pricewars.utils.JSONConverter._
+import de.hpi.epic.pricewars.connectors.ProducerConnector
+import de.hpi.epic.pricewars.data._
+import de.hpi.epic.pricewars.utils.ResultConverter._
 import spray.http._
-import spray.json._
 import spray.routing._
 
 class MarketplaceServiceActor extends Actor with ActorLogging with MarketplaceService {
@@ -31,15 +33,30 @@ trait MarketplaceService extends HttpService with CORSSupport {
                 entity(as[Offer]) { offer =>
                   detach() {
                     complete {
-                      val (merchant, statusCode) = ValidateLimit.checkMerchant(authorizationHeader)
-                      if (merchant.isDefined) {
-                        DatabaseStore.addOffer(offer, merchant.get).successHttpCode(StatusCodes.Created)
-                      } else {
-                        statusCode -> s"""{"error": "Not authorized or API request limit reached! Status Code: $statusCode"}"""
+                      DatabaseStore
+                        .getMerchantByToken(ValidateLimit.getTokenString(authorizationHeader).getOrElse(""))
+                        .flatMap( merchant => DatabaseStore.addOffer(offer, merchant))
+                        .successHttpCode(StatusCodes.Created)
+                    }
+                  }
+                } ~
+                  entity(as[Array[Offer]]) { offerArray =>
+                    detach() {
+                      complete {
+                        //TODO: refactor this with map
+                        val merchant = DatabaseStore.getMerchantByToken(
+                          ValidateLimit.getTokenString(authorizationHeader).getOrElse("")
+                        )
+                        val statusCode = StatusCodes.Unauthorized
+                        if (merchant.isSuccess) {
+                          val (bulkResult, status) = DatabaseStore.addBulkOffers(offerArray, merchant.get)
+                          bulkResult.successHttpCode(status)
+                        } else {
+                          statusCode -> s"""{"error": "Not authorized! Status Code: $statusCode"}"""
+                        }
                       }
                     }
                   }
-                }
               }
             }
         } ~
@@ -52,16 +69,10 @@ trait MarketplaceService extends HttpService with CORSSupport {
               delete {
                 optionalHeaderValueByName(HttpHeaders.Authorization.name) { authorizationHeader =>
                   complete {
-                    val (merchant, statusCode) = ValidateLimit.checkMerchant(authorizationHeader)
-                    if (merchant.isDefined) {
-                      val res = DatabaseStore.deleteOffer(id, merchant.get)
-                      res match {
-                        case Success(v) => StatusCodes.NoContent
-                        case f: Failure[Unit] => StatusCode.int2StatusCode(f.code) -> f.toJson.toString()
-                      }
-                    } else {
-                      statusCode -> s"""{"error": "Not authorized or API request limit reached! Status Code: $statusCode"}"""
-                    }
+                    ValidateLimit
+                      .checkMerchant(authorizationHeader)
+                      .flatMap(merchant => DatabaseStore.deleteOffer(id, merchant))
+                      .successHttpCode(StatusCodes.NoContent)
                   }
                 }
               } ~
@@ -70,12 +81,9 @@ trait MarketplaceService extends HttpService with CORSSupport {
                   entity(as[Offer]) { offer =>
                     detach() {
                       complete {
-                        val (merchant, statusCode) = ValidateLimit.checkMerchant(authorizationHeader)
-                        if (merchant.isDefined) {
-                          DatabaseStore.updateOffer(id, offer, merchant.get)
-                        } else {
-                          statusCode -> s"""{"error": "Not authorized or API request limit reached! Status Code: $statusCode"}"""
-                        }
+                        ValidateLimit
+                          .checkMerchant(authorizationHeader)
+                          .flatMap(merchant => DatabaseStore.updateOffer(id, offer, merchant))
                       }
                     }
                   }
@@ -88,12 +96,10 @@ trait MarketplaceService extends HttpService with CORSSupport {
                 entity(as[BuyRequest]) { buyRequest =>
                   detach() {
                     complete {
-                      val (consumer, statusCode) = ValidateLimit.checkConsumer(authorizationHeader)
-                      if (consumer.isDefined) {
-                        DatabaseStore.buyOffer(id, buyRequest.price, buyRequest.amount, consumer.get).successHttpCode(StatusCodes.NoContent)
-                      } else {
-                        statusCode -> s"""{"error": "Not authorized or API request limit reached! Status Code: $statusCode"}"""
-                      }
+                      ValidateLimit
+                        .checkConsumer(authorizationHeader)
+                        .flatMap(consumer => DatabaseStore.buyOffer(id, buyRequest.price, buyRequest.amount, consumer))
+                        .successHttpCode(StatusCodes.NoContent)
                     }
                   }
                 }
@@ -105,12 +111,11 @@ trait MarketplaceService extends HttpService with CORSSupport {
               optionalHeaderValueByName(HttpHeaders.Authorization.name) { authorizationHeader =>
                 entity(as[OfferPatch]) { offer =>
                   complete {
-                    val (merchant, statusCode) = ValidateLimit.checkMerchant(authorizationHeader)
-                    if (merchant.isDefined) {
-                      DatabaseStore.restockOffer(id, offer.amount.getOrElse(0), offer.signature.getOrElse(""), merchant.get)
-                    } else {
-                      statusCode -> s"""{"error": "Not authorized or API request limit reached! Status Code: $statusCode"}"""
-                    }
+                    DatabaseStore
+                      .getMerchantByToken(ValidateLimit.getTokenString(authorizationHeader).getOrElse(""))
+                      .flatMap(merchant =>
+                        DatabaseStore.restockOffer(id, offer.amount.getOrElse(0), offer.signature.getOrElse(""), merchant)
+                      )
                   }
                 }
               }
@@ -135,11 +140,7 @@ trait MarketplaceService extends HttpService with CORSSupport {
           path("merchants" / "token" / Rest) { token =>
             delete {
               complete {
-                val res = DatabaseStore.deleteMerchant(token)
-                res match {
-                  case Success(_) => StatusCodes.NoContent
-                  case f: Failure[Unit] => StatusCode.int2StatusCode(f.code) -> f.toJson.toString()
-                }
+                DatabaseStore.deleteMerchant(token).successHttpCode(StatusCodes.NoContent)
               }
             }
           } ~
@@ -149,19 +150,19 @@ trait MarketplaceService extends HttpService with CORSSupport {
                 DatabaseStore.getMerchant(id)
               }
             } ~
-              delete {
-                optionalHeaderValueByName(HttpHeaders.Authorization.name) { authorizationHeader =>
-                  complete {
-                    val token = ValidateLimit.getTokenString(authorizationHeader)
-                    val merchant = ValidateLimit.getMerchantFromToken(token.get).get
-                    val res = DatabaseStore.deleteMerchant(merchant.merchant_id.get, delete_with_token = false)
-                    res match {
-                      case Success(_) => StatusCodes.NoContent
-                      case f: Failure[Unit] => StatusCode.int2StatusCode(f.code) -> f.toJson.toString()
-                    }
-                  }
+            delete {
+              optionalHeaderValueByName(HttpHeaders.Authorization.name) { authorizationHeader =>
+                complete {
+                  val token = ValidateLimit.getTokenString(authorizationHeader)
+                  DatabaseStore
+                    .getMerchantByToken(token.getOrElse(""))
+                    .flatMap( merchant => {
+                      DatabaseStore.deleteMerchant(merchant.merchant_id.get, delete_with_token = false)
+                    })
+                    .successHttpCode(StatusCodes.NoContent)
                 }
               }
+            }
           } ~
           path("consumers") {
             get {
@@ -182,11 +183,7 @@ trait MarketplaceService extends HttpService with CORSSupport {
           path("consumers" / "token" / Rest) { token =>
             delete {
               complete {
-                val res = DatabaseStore.deleteConsumer(token)
-                res match {
-                  case Success(_) => StatusCodes.NoContent
-                  case f: Failure[Unit] => StatusCode.int2StatusCode(f.code) -> f.toJson.toString()
-                }
+                DatabaseStore.deleteConsumer(token).successHttpCode(StatusCodes.NoContent)
               }
             }
           } ~
@@ -196,19 +193,17 @@ trait MarketplaceService extends HttpService with CORSSupport {
                 DatabaseStore.getConsumer(id)
               }
             } ~
-              delete {
-                optionalHeaderValueByName(HttpHeaders.Authorization.name) { authorizationHeader =>
-                  complete {
-                    val token = ValidateLimit.getTokenString(authorizationHeader)
-                    val consumer = ValidateLimit.getConsumerFromToken(token.get).get
-                    val res = DatabaseStore.deleteMerchant(consumer.consumer_id.get, delete_with_token = false)
-                    res match {
-                      case Success(_) => StatusCodes.NoContent
-                      case f: Failure[Unit] => StatusCode.int2StatusCode(f.code) -> f.toJson.toString()
-                    }
-                  }
+            delete {
+              optionalHeaderValueByName(HttpHeaders.Authorization.name) { authorizationHeader =>
+                complete {
+                  val token = ValidateLimit.getTokenString(authorizationHeader)
+                  DatabaseStore
+                    .getConsumerByToken(token.getOrElse(""))
+                    .flatMap(consumer => DatabaseStore.deleteConsumer(consumer.consumer_id.get, delete_with_token = false))
+                    .successHttpCode(StatusCodes.NoContent)
                 }
               }
+            }
           } ~
           path("products") {
             get {
@@ -234,11 +229,7 @@ trait MarketplaceService extends HttpService with CORSSupport {
             } ~
               delete {
                 complete {
-                  val res = DatabaseStore.deleteProduct(id)
-                  res match {
-                    case Success(v) => StatusCodes.NoContent
-                    case f: Failure[Unit] => StatusCode.int2StatusCode(f.code) -> f.toJson.toString()
-                  }
+                  DatabaseStore.deleteProduct(id).successHttpCode(StatusCodes.NoContent)
                 }
               }
           } ~
@@ -255,25 +246,25 @@ trait MarketplaceService extends HttpService with CORSSupport {
                 }
               }
             }
-          }
-      } ~
-        path("config") {
-          get {
-            complete {
-              StatusCodes.OK -> s"""{"tick": "${ValidateLimit.getTick}", "max_req_per_sec": "${ValidateLimit.getMaxReqPerSec}"}"""
-            }
           } ~
-          put {
-            entity(as[Settings]) { settings =>
-              detach() {
-                complete {
-                  ValidateLimit.setLimit(settings.tick, settings.max_req_per_sec)
-                  StatusCode.int2StatusCode(200) -> s"""{}"""
+          path("config") {
+            get {
+              complete {
+                StatusCodes.OK -> s"""{"tick": "${ValidateLimit.getTick}", "max_req_per_sec": "${ValidateLimit.getMaxReqPerSec}"}"""
+              }
+            } ~
+              put {
+                entity(as[Settings]) { settings =>
+                  detach() {
+                    complete {
+                      ValidateLimit.setLimit(settings.tick, settings.max_req_per_sec)
+                      StatusCode.int2StatusCode(200) -> s"""{}"""
+                    }
+                  }
                 }
               }
-            }
           }
-        }
+      }
     }
   }
 }

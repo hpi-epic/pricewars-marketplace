@@ -1,6 +1,7 @@
 package de.hpi.epic.pricewars
 
-import akka.actor.{Props, ActorSystem}
+import akka.actor.{ActorSystem, Props}
+import de.hpi.epic.pricewars.services.{DatabaseStore, MarketplaceServiceActor}
 import spray.servlet.WebBoot
 
 class Server extends WebBoot {

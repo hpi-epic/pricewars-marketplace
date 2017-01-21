@@ -17,7 +17,8 @@ libraryDependencies ++= {
   val kafkaV = "0.10.1.1"
   val scalaxmlV = "1.0.6"
   val commonsCodecV = "1.10"
-  val redisClientV = "3.2"
+  val redisClientV = "3.3"
+  val scalarxV = "0.3.2"
 
   Seq(
     "io.spray"                %%  "spray-servlet"             % sprayV,
@@ -35,7 +36,8 @@ libraryDependencies ++= {
     "net.cakesolutions"       %% "scala-kafka-client-akka"    % kafkaV,
     "org.scala-lang.modules"  %%  "scala-xml"                 % scalaxmlV,
     "commons-codec"           %  "commons-codec"              % commonsCodecV,
-    "net.debasishg"           %% "redisclient"                % redisClientV
+    "net.debasishg"           %% "redisclient"                % redisClientV,
+    "com.lihaoyi"             %% "scalarx"                    % scalarxV
   )
 }
 

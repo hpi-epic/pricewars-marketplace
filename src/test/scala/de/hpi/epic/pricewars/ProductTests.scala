@@ -1,6 +1,8 @@
 package de.hpi.epic.pricewars
 
-import de.hpi.epic.pricewars.JSONConverter._
+import de.hpi.epic.pricewars.utils.JSONConverter._
+import de.hpi.epic.pricewars.data.Product
+import de.hpi.epic.pricewars.services.{DatabaseStore, MarketplaceService}
 import org.specs2.mutable.Specification
 import spray.http.StatusCodes._
 import spray.http._
