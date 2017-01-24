@@ -9,7 +9,7 @@ import rx.{Rx, Var}
 import spray.http.StatusCodes
 
 object ValidateLimit {
-  val timeToLiveSeconds = 100
+  val precisionFactor = 100
   private val config: Config = ConfigFactory.load
   private val redis_hostname: String = config.getConfig("redis").getString("hostname")
   private val redis_port: Int = config.getConfig("redis").getInt("port")
@@ -17,8 +17,8 @@ object ValidateLimit {
 
   private val tick = Var(10.0)
   private val max_req_per_sec = Var(100)
-  private val limitPerSecond = Rx { max_req_per_sec() / tick() }
-  private val limit = Rx { limitPerSecond() + timeToLiveSeconds }
+  private val timeToLiveRedisKey = Rx { (tick() * precisionFactor).asInstanceOf[Long] }
+  private val limit = Rx { max_req_per_sec() * precisionFactor }
 
   def getTick: Double = {
     tick.now
@@ -58,7 +58,7 @@ object ValidateLimit {
 
   private def check(tokenOption: Option[String]): Result[String] = {
     tokenOption match {
-      case None => Failure("Not authorized! Cause: Empty authentification token.", StatusCodes.Unauthorized.intValue)
+      case None => Failure("Not authorized! Cause: Empty authentication token.", StatusCodes.Unauthorized.intValue)
       case Some(token) =>
         if (count(token) < limit.now && addEntry(token)) Success(token)
         else Failure("API request limit reached!", StatusCodes.TooManyRequests.intValue)
@@ -67,7 +67,7 @@ object ValidateLimit {
 
   private def addEntry(key: String): Boolean = {
     val redis_key = key + "---" + new DateTime()
-    redis.setex(redis_key, timeToLiveSeconds, 1)
+    redis.setex(redis_key, timeToLiveRedisKey.now, 1)
   }
 
   private def count(key: String): Int = {
