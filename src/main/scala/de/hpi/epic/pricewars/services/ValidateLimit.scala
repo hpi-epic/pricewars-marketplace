@@ -15,8 +15,10 @@ object ValidateLimit {
   private val redis_port: Int = config.getConfig("redis").getInt("port")
   private def redis: RedisClient = new RedisClient(redis_hostname, redis_port)
 
-  private val tick = Var(10.0)
-  private val max_req_per_sec = Var(100)
+  private val tick = Var(1.0)
+  private val consumer_per_minute = Var(30.0)
+  private val max_updates_per_sale = Var(20.0)
+  private val max_req_per_sec = Var(10.0)
   private val timeToLiveRedisKey = Rx { (tick() * precisionFactor).asInstanceOf[Long] }
   private val limit = Rx { max_req_per_sec() * precisionFactor }
 
@@ -24,12 +26,21 @@ object ValidateLimit {
     tick.now
   }
 
+  def getConsumerPerMinute: Double = {
+    consumer_per_minute.now
+  }
+
+  def getMaxUpdatesPerSale: Double = {
+    max_updates_per_sale.now
+  }
+
   def getMaxReqPerSec: Int = {
     max_req_per_sec.now
   }
 
-  def setLimit(new_tick: Double, new_max_req_per_sec: Int): Double = {
-    tick() = new_tick
+  def setLimit(consumer_per_minute: Double, max_updates_per_sale: Double, new_max_req_per_sec: Double): Double = {
+    consumer_per_minute() = consumer_per_minute
+    max_updates_per_sale() = max_updates_per_sale
     max_req_per_sec() = new_max_req_per_sec
     limit.now
   }
