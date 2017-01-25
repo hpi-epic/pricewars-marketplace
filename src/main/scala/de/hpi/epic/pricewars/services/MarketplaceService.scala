@@ -251,9 +251,9 @@ trait MarketplaceService extends HttpService with CORSSupport {
             get {
               complete {
                 StatusCodes.OK -> s"""{
-                  "consumer_per_minute": "${ValidateLimit.getConsumerPerMinute}",
-                  "max_updates_per_sale": "${ValidateLimit.getMaxUpdatesPerSale}", 
-                  "max_req_per_sec": "${ValidateLimit.getMaxReqPerSec}"
+                  "consumer_per_minute": ${ValidateLimit.getConsumerPerMinute},
+                  "max_updates_per_sale": ${ValidateLimit.getMaxUpdatesPerSale}, 
+                  "max_req_per_sec": ${ValidateLimit.getMaxReqPerSec}
                 }"""
               }
             } ~
