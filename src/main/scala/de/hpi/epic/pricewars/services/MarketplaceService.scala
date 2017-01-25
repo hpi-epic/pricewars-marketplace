@@ -142,11 +142,11 @@ trait MarketplaceService extends HttpService with CORSSupport {
               entity(as[Merchant]) { merchant => 
                 detach() {
                   complete {
-                    DatabaseStore.updateMerchant(token, merchant).successHttpCode(StatusCodes.NoContent)
+                    DatabaseStore.updateMerchant(token, merchant).successHttpCode(StatusCodes.OK)
                   }
                 }
               }
-            }
+            } ~
             delete {
               complete {
                 DatabaseStore.deleteMerchant(token).successHttpCode(StatusCodes.NoContent)
