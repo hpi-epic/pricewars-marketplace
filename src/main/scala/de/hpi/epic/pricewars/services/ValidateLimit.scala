@@ -34,7 +34,7 @@ object ValidateLimit {
     max_updates_per_sale.now
   }
 
-  def getMaxReqPerSec: Int = {
+  def getMaxReqPerSec: Double = {
     max_req_per_sec.now
   }
 
