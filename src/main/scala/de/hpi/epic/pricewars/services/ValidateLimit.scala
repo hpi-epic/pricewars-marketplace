@@ -38,10 +38,10 @@ object ValidateLimit {
     max_req_per_sec.now
   }
 
-  def setLimit(consumer_per_minute: Double, max_updates_per_sale: Double, new_max_req_per_sec: Double): Double = {
-    consumer_per_minute() = consumer_per_minute
-    max_updates_per_sale() = max_updates_per_sale
-    max_req_per_sec() = new_max_req_per_sec
+  def setLimit(consumer_per_minute: Double, max_updates_per_sale: Double, max_req_per_sec: Double): Double = {
+    this.consumer_per_minute() = consumer_per_minute
+    this.max_updates_per_sale() = max_updates_per_sale
+    this.max_req_per_sec() = max_req_per_sec
     limit.now
   }
 
