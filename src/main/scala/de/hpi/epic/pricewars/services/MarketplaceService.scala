@@ -138,6 +138,15 @@ trait MarketplaceService extends HttpService with CORSSupport {
               }
           } ~
           path("merchants" / "token" / Rest) { token =>
+            put {
+              entity(as[Merchant]) { merchant => 
+                detach() {
+                  complete {
+                    DatabaseStore.updateMerchant(token, merchant).successHttpCode(StatusCodes.NoContent)
+                  }
+                }
+              }
+            }
             delete {
               complete {
                 DatabaseStore.deleteMerchant(token).successHttpCode(StatusCodes.NoContent)

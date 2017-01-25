@@ -377,6 +377,28 @@ object DatabaseStore {
       }
     }
   }
+  // UPDATE table SET user='$user', name='$name' where id ='$id'"
+  def updateMerchant(token: String, merchant: Merchant): Result[Merchant] = {
+    val res = Try(DB localTx { implicit session =>
+      sql"""UPDATE merchants
+        SET 
+          api_endpoint_url = ${merchant.api_endpoint_url},
+          merchant_name = ${merchant.merchant_name},
+          algorithm_name = ${merchant.algorithm_name}
+        WHERE merchant_token = ${token}
+        RETURNING merchant_id, merchant_token, api_endpoint_url, merchant_name, algorithm_name""".map(rs => Merchant(rs)).list.apply().headOption.get
+    })
+    res match {
+      case scala.util.Success(created_merchant) => {
+        kafka_producer.send(KafkaProducerRecord("updateMerchant", s"""{"merchant_id": ${created_merchant.merchant_id.get} "api_endpoint_url": ${merchant.api_endpoint_url}, "merchant_name": ${merchant.merchant_name}, "algorithm_name": ${merchant.algorithm_name}, "http_code": 200, "timestamp": "${new DateTime()}"}"""))
+        Success(merchant.copy(merchant_id = created_merchant.merchant_id, merchant_token = created_merchant.merchant_token))
+      }
+      case scala.util.Failure(e) => {
+        kafka_producer.send(KafkaProducerRecord("updateMerchant", s"""{"api_endpoint_url": ${merchant.api_endpoint_url}, "merchant_name": ${merchant.merchant_name}, "algorithm_name": ${merchant.algorithm_name}, "http_code": 500, "timestamp": "${new DateTime()}"}"""))
+        Failure(e.getMessage, 500)
+      }
+    }
+  }
 
   def deleteMerchant(delete_parameter: String, delete_with_token: Boolean = true): Result[Unit] = {
     var sql = sql""
