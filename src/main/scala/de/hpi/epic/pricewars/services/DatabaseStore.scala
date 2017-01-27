@@ -163,11 +163,13 @@ object DatabaseStore {
     }
   }
 
-  def getOffers(product_id: Option[Long]): Result[Seq[Offer]] = {
+  def getOffers(product_id: Option[Long], all_offers_from_merchant_id: Option[String]): Result[Seq[Offer]] = {
     val res = Try(DB readOnly { implicit session =>
-      val sql = product_id match {
-        case Some(id) => sql"SELECT offer_id, uid, product_id, quality, merchant_id, amount, price, shipping_time_standard, shipping_time_prime, prime FROM offers WHERE amount > 0 AND product_id = $id"
-        case None => sql"SELECT offer_id, uid, product_id, quality, merchant_id, amount, price, shipping_time_standard, shipping_time_prime, prime FROM offers WHERE amount > 0"
+      val sql = (product_id, all_offers_from_merchant_id) match {
+        case (Some(id), Some(merchant_id)) => sql"SELECT offer_id, uid, product_id, quality, merchant_id, amount, price, shipping_time_standard, shipping_time_prime, prime FROM offers WHERE merchant_id = $merchant_id AND product_id = $id"
+        case (Some(id), None) => sql"SELECT offer_id, uid, product_id, quality, merchant_id, amount, price, shipping_time_standard, shipping_time_prime, prime FROM offers WHERE amount > 0 AND product_id = $id"
+        case (None, Some(merchant_id)) => sql"SELECT offer_id, uid, product_id, quality, merchant_id, amount, price, shipping_time_standard, shipping_time_prime, prime FROM offers WHERE merchant_id = $merchant_id"
+        case (None, None) => sql"SELECT offer_id, uid, product_id, quality, merchant_id, amount, price, shipping_time_standard, shipping_time_prime, prime FROM offers WHERE amount > 0"
       }
       sql.map(rs => Offer(rs)).list.apply()
     })

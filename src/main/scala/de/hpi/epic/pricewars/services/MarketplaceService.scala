@@ -22,9 +22,22 @@ trait MarketplaceService extends HttpService with CORSSupport {
       cors {
         path("offers") {
           get {
-            parameter('product_id.as[Long] ?) { product_id =>
-              complete {
-                DatabaseStore.getOffers(product_id)
+            optionalHeaderValueByName(HttpHeaders.Authorization.name) { authorizationHeader =>
+              parameter('product_id.as[Long] ?) { product_id =>
+                parameter('include_empty_offer.as[Boolean] ?) { include_empty_offer =>
+                  complete {
+                    if (include_empty_offer.getOrElse(false)) {
+                      val merchant = DatabaseStore.getMerchantByToken(ValidateLimit.getTokenString(authorizationHeader).getOrElse(""))
+                      if (merchant.isSuccess) {
+                        DatabaseStore.getOffers(product_id, merchant.get.merchant_id)
+                      } else {
+                        DatabaseStore.getOffers(product_id, None)
+                      }
+                    } else {
+                      DatabaseStore.getOffers(product_id, None)
+                    }
+                  }
+                }
               }
             }
           } ~
@@ -35,7 +48,7 @@ trait MarketplaceService extends HttpService with CORSSupport {
                     complete {
                       DatabaseStore
                         .getMerchantByToken(ValidateLimit.getTokenString(authorizationHeader).getOrElse(""))
-                        .flatMap( merchant => DatabaseStore.addOffer(offer, merchant))
+                        .flatMap(merchant => DatabaseStore.addOffer(offer, merchant))
                         .successHttpCode(StatusCodes.Created)
                     }
                   }
@@ -139,7 +152,7 @@ trait MarketplaceService extends HttpService with CORSSupport {
           } ~
           path("merchants" / "token" / Rest) { token =>
             put {
-              entity(as[Merchant]) { merchant => 
+              entity(as[Merchant]) { merchant =>
                 detach() {
                   complete {
                     DatabaseStore.updateMerchant(token, merchant).successHttpCode(StatusCodes.OK)
@@ -147,11 +160,11 @@ trait MarketplaceService extends HttpService with CORSSupport {
                 }
               }
             } ~
-            delete {
-              complete {
-                DatabaseStore.deleteMerchant(token).successHttpCode(StatusCodes.NoContent)
+              delete {
+                complete {
+                  DatabaseStore.deleteMerchant(token).successHttpCode(StatusCodes.NoContent)
+                }
               }
-            }
           } ~
           path("merchants" / Rest) { id =>
             get {
@@ -159,19 +172,19 @@ trait MarketplaceService extends HttpService with CORSSupport {
                 DatabaseStore.getMerchant(id)
               }
             } ~
-            delete {
-              optionalHeaderValueByName(HttpHeaders.Authorization.name) { authorizationHeader =>
-                complete {
-                  val token = ValidateLimit.getTokenString(authorizationHeader)
-                  DatabaseStore
-                    .getMerchantByToken(token.getOrElse(""))
-                    .flatMap( merchant => {
-                      DatabaseStore.deleteMerchant(merchant.merchant_id.get, delete_with_token = false)
-                    })
-                    .successHttpCode(StatusCodes.NoContent)
+              delete {
+                optionalHeaderValueByName(HttpHeaders.Authorization.name) { authorizationHeader =>
+                  complete {
+                    val token = ValidateLimit.getTokenString(authorizationHeader)
+                    DatabaseStore
+                      .getMerchantByToken(token.getOrElse(""))
+                      .flatMap(merchant => {
+                        DatabaseStore.deleteMerchant(merchant.merchant_id.get, delete_with_token = false)
+                      })
+                      .successHttpCode(StatusCodes.NoContent)
+                  }
                 }
               }
-            }
           } ~
           path("consumers") {
             get {
@@ -202,17 +215,17 @@ trait MarketplaceService extends HttpService with CORSSupport {
                 DatabaseStore.getConsumer(id)
               }
             } ~
-            delete {
-              optionalHeaderValueByName(HttpHeaders.Authorization.name) { authorizationHeader =>
-                complete {
-                  val token = ValidateLimit.getTokenString(authorizationHeader)
-                  DatabaseStore
-                    .getConsumerByToken(token.getOrElse(""))
-                    .flatMap(consumer => DatabaseStore.deleteConsumer(consumer.consumer_id.get, delete_with_token = false))
-                    .successHttpCode(StatusCodes.NoContent)
+              delete {
+                optionalHeaderValueByName(HttpHeaders.Authorization.name) { authorizationHeader =>
+                  complete {
+                    val token = ValidateLimit.getTokenString(authorizationHeader)
+                    DatabaseStore
+                      .getConsumerByToken(token.getOrElse(""))
+                      .flatMap(consumer => DatabaseStore.deleteConsumer(consumer.consumer_id.get, delete_with_token = false))
+                      .successHttpCode(StatusCodes.NoContent)
+                  }
                 }
               }
-            }
           } ~
           path("products") {
             get {
@@ -259,7 +272,8 @@ trait MarketplaceService extends HttpService with CORSSupport {
           path("config") {
             get {
               complete {
-                StatusCodes.OK -> s"""{
+                StatusCodes.OK ->
+                  s"""{
                   "consumer_per_minute": ${ValidateLimit.getConsumerPerMinute},
                   "max_updates_per_sale": ${ValidateLimit.getMaxUpdatesPerSale}, 
                   "max_req_per_sec": ${ValidateLimit.getMaxReqPerSec}
