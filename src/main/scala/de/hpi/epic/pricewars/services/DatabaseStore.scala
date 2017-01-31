@@ -114,7 +114,7 @@ object DatabaseStore {
       res match {
         case scala.util.Success(id) => {
           kafka_producer.send(KafkaProducerRecord("addOffer", s"""{"offer_id": $id, "uid": ${offer.uid}, "product_id": ${offer.product_id}, "quality": ${offer.quality}, "merchant_id": ${merchant.merchant_id.get}, "amount": ${offer.amount}, "price": ${offer.price}, "shipping_time_standard": ${offer.shipping_time.standard}, "shipping_time_prime": ${offer.shipping_time.prime.getOrElse(0)}, "prime": ${offer.prime}, "signature": "${offer.signature.getOrElse("")}", "http_code": 200, "timestamp": "${new DateTime()}"}"""))
-          logCurrentMarketSituation(offer.uid)
+          logCurrentMarketSituation(offer.uid, "addOffer")
           Success(offer.copy(offer_id = Some(id), signature = None, merchant_id = Some(merchant.merchant_id.get)))
         }
         case scala.util.Failure(e) => {
@@ -271,7 +271,7 @@ object DatabaseStore {
       res match {
         case scala.util.Success(Some(v)) => {
           kafka_producer.send(KafkaProducerRecord("updateOffer", s"""{"offer_id": $offer_id, "uid": ${offer.uid}, "product_id": ${offer.product_id}, "quality": ${offer.quality}, "merchant_id": "${merchant.merchant_id.get}", "amount": ${offer.amount}, "price": ${offer.price}, "shipping_time_standard": ${offer.shipping_time.standard}, "shipping_time_prime": ${offer.shipping_time.prime.getOrElse(0)}, "prime": ${offer.prime}, "signature": "${offer.signature.getOrElse("")}", "http_code": 200, "timestamp": "${new DateTime()}"}"""))
-          logCurrentMarketSituation(offer.uid)
+          logCurrentMarketSituation(offer.uid, "updateOffer")
           Success(v)
         }
         case scala.util.Success(None) => {
@@ -330,7 +330,7 @@ object DatabaseStore {
     }
   }
 
-  def logCurrentMarketSituation(uid: Long) = {
+  def logCurrentMarketSituation(uid: Long, trigger: String = "unknown") = {
     val res = Try(DB localTx { implicit session =>
       sql"""SELECT offer_id, uid, product_id, quality, merchant_id, amount, price, shipping_time_standard, shipping_time_prime, prime
         FROM offers
@@ -341,7 +341,7 @@ object DatabaseStore {
         val buf = new StringBuilder
         buf ++= s"""{"timestamp": "${new DateTime()}", "offers": {"""
         list.foreach(offer => {
-          buf ++= s""""${offer.merchant_id.get}": {"offer_id": ${offer.offer_id.get}, "uid": ${offer.uid}, "product_id": ${offer.product_id}, "quality": ${offer.quality}, "merchant_id": "${offer.merchant_id.get}", "amount": ${offer.amount}, "price": ${offer.price}, "shipping_time_standard": ${offer.shipping_time.standard}, "shipping_time_prime": ${offer.shipping_time.prime.getOrElse(0)}, "prime": ${offer.prime}"""
+          buf ++= s""""${offer.merchant_id.get}": {"offer_id": ${offer.offer_id.get}, "uid": ${offer.uid}, "product_id": ${offer.product_id}, "quality": ${offer.quality}, "merchant_id": "${offer.merchant_id.get}", "amount": ${offer.amount}, "price": ${offer.price}, "shipping_time_standard": ${offer.shipping_time.standard}, "shipping_time_prime": ${offer.shipping_time.prime.getOrElse(0)}, "prime": ${offer.prime}, "trigger": "$trigger" """
           if (offer != list.last) {
             buf ++= s"""}, """
           }
