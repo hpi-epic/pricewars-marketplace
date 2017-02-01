@@ -334,7 +334,7 @@ object DatabaseStore {
     val res = Try(DB localTx { implicit session =>
       sql"""SELECT offer_id, uid, product_id, quality, merchant_id, amount, price, shipping_time_standard, shipping_time_prime, prime
         FROM offers
-        WHERE product_id = $product_id""".map(rs => Offer(rs)).list.apply()
+        WHERE product_id = $product_id AND amount > 0""".map(rs => Offer(rs)).list.apply()
     })
     res match {
       case scala.util.Success(list) => {
@@ -383,7 +383,7 @@ object DatabaseStore {
   def updateMerchant(token: String, merchant: Merchant): Result[Merchant] = {
     val res = Try(DB localTx { implicit session =>
       sql"""UPDATE merchants
-        SET 
+        SET
           api_endpoint_url = ${merchant.api_endpoint_url},
           merchant_name = ${merchant.merchant_name},
           algorithm_name = ${merchant.algorithm_name}
