@@ -1,5 +1,8 @@
 FROM hseeberger/scala-sbt:latest
 
+RUN apt-get update -qq
+RUN apt-get install -y postgresql
+
 ENV APP_HOME /marketplace
 RUN mkdir $APP_HOME
 WORKDIR $APP_HOME
