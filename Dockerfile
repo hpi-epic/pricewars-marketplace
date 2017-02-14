@@ -14,4 +14,4 @@ ADD . $APP_HOME
 
 RUN sbt compile
 
-CMD ["./wait-for-it.sh", "postgres:5432", "-t", "0", "--", "sbt", "~tomcat:start"]
+CMD ["./start-marketplace.sh"]
