@@ -13,7 +13,7 @@ sbt ~tomcat:start &
 PID_MARKETPLACE=$!
 
 /marketplace/wait-for-it.sh marketplace:8080 -t 0
-
+sleep 20
 
 for file in /db-seeds/*; do
     if [ "${file}" != "${file%.sql}" ];then
