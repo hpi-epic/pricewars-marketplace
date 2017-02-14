@@ -3,6 +3,9 @@
 POSTGRES_URL=jdbc:postgresql://$POSTGRES_HOST:$POSTGRES_PORT/$POSTGRES_DB
 PGPASSWORD=$POSTGRES_PASSWORD
 
+export POSTGRES_URL
+export PGPASSWORD
+
 /marketplace/wait-for-it.sh postgres:5432 -t 0
 sbt ~tomcat:start &
 
