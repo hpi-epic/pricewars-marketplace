@@ -516,16 +516,17 @@ object DatabaseStore {
 
   def addConsumer(consumer: Consumer): Result[Consumer] = {
     val res = Try(DB localTx { implicit session =>
-      sql"""WITH token AS (SELECT random_string(64) AS value),
+      sql"""BEGIN;
+      SELECT consumer_id INTO TEMPORARY TABLE existing_consumer FROM consumers WHERE api_endpoint_url = ${consumer.api_endpoint_url};
+      DELETE FROM consumers WHERE consumer_id = (SELECT consumer_id FROM existing_consumer);
+      WITH token AS (SELECT random_string(64) AS value),
              token_hash AS (SELECT encode(digest(token.value, 'sha256'), 'base64') AS value FROM token)
-         INSERT INTO consumers SELECT
-           token_hash.value,
-           token.value,
-           ${consumer.api_endpoint_url},
-           ${consumer.consumer_name},
-           ${consumer.description}
-         FROM token_hash, token
-         RETURNING consumer_id, consumer_token, api_endpoint_url, consumer_name, description""".map(rs => Consumer(rs)).list.apply().headOption.get
+      INSERT INTO consumers SELECT token_hash.value,
+           token.value, ${consumer.api_endpoint_url}, ${consumer.consumer_name}, ${consumer.description}
+      FROM token_hash, token;
+      DROP TABLE existing_consumer;
+      COMMIT;""".update().apply()
+      sql"SELECT consumer_id, consumer_token, api_endpoint_url, consumer_name, description FROM consumers WHERE api_endpoint_url = ${consumer.api_endpoint_url}".map(rs => Consumer(rs)).list.apply().headOption.get
     })
     res match {
       case scala.util.Success(created_consumer) => {
