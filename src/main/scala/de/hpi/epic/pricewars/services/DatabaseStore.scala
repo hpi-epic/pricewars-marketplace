@@ -515,8 +515,16 @@ object DatabaseStore {
   }
 
   def addConsumer(consumer: Consumer): Result[Consumer] = {
-    val res = Try(DB localTx { implicit session =>
-      sql"""BEGIN;
+    val dbResult = Result(DB readOnly { implicit session => {
+      val sqlQuery =
+        sql"""SELECT COUNT(api_endpoint_url) FROM consumers WHERE api_endpoint_url != ${consumer.api_endpoint_url};
+           """
+      sqlQuery.map(rs => rs.long(1)).single.apply().get
+    }})
+    val consumerLimit = config.getLong("consumer_limit")
+    if (consumerLimit <= 0 || (dbResult.isSuccess && dbResult.get < consumerLimit)) {
+      val res = Try(DB localTx { implicit session =>
+        sql"""BEGIN;
       SELECT consumer_id INTO TEMPORARY TABLE existing_consumer FROM consumers WHERE api_endpoint_url = ${consumer.api_endpoint_url};
       DELETE FROM consumers WHERE consumer_id = (SELECT consumer_id FROM existing_consumer);
       WITH token AS (SELECT random_string(64) AS value),
@@ -526,17 +534,21 @@ object DatabaseStore {
       FROM token_hash, token;
       DROP TABLE existing_consumer;
       COMMIT;""".update().apply()
-      sql"SELECT consumer_id, consumer_token, api_endpoint_url, consumer_name, description FROM consumers WHERE api_endpoint_url = ${consumer.api_endpoint_url}".map(rs => Consumer(rs)).list.apply().headOption.get
-    })
-    res match {
-      case scala.util.Success(created_consumer) => {
-        kafka_producer.send(KafkaProducerRecord("addConsumer", s"""{"consumer_id": ${created_consumer.consumer_id.get}, "api_endpoint_url": ${consumer.api_endpoint_url}, "consumer_name": ${consumer.consumer_name}, "description": ${consumer.description}, "http_code": 200, "timestamp": "${new DateTime()}"}"""))
-        Success(consumer.copy(consumer_id = created_consumer.consumer_id, consumer_token = created_consumer.consumer_token))
+        sql"SELECT consumer_id, consumer_token, api_endpoint_url, consumer_name, description FROM consumers WHERE api_endpoint_url = ${consumer.api_endpoint_url}".map(rs => Consumer(rs)).list.apply().headOption.get
+      })
+      res match {
+        case scala.util.Success(created_consumer) => {
+          kafka_producer.send(KafkaProducerRecord("addConsumer", s"""{"consumer_id": ${created_consumer.consumer_id.get}, "api_endpoint_url": ${consumer.api_endpoint_url}, "consumer_name": ${consumer.consumer_name}, "description": ${consumer.description}, "http_code": 200, "timestamp": "${new DateTime()}"}"""))
+          Success(consumer.copy(consumer_id = created_consumer.consumer_id, consumer_token = created_consumer.consumer_token))
+        }
+        case scala.util.Failure(e) => {
+          kafka_producer.send(KafkaProducerRecord("addConsumer", s"""{"api_endpoint_url": ${consumer.api_endpoint_url}, "consumer_name": ${consumer.consumer_name}, "description": ${consumer.description}, "http_code": 500, "timestamp": "${new DateTime()}"}"""))
+          Failure(e.getMessage, 500)
+        }
       }
-      case scala.util.Failure(e) => {
-        kafka_producer.send(KafkaProducerRecord("addConsumer", s"""{"api_endpoint_url": ${consumer.api_endpoint_url}, "consumer_name": ${consumer.consumer_name}, "description": ${consumer.description}, "http_code": 500, "timestamp": "${new DateTime()}"}"""))
-        Failure(e.getMessage, 500)
-      }
+    } else {
+      kafka_producer.send(KafkaProducerRecord("addConsumer", s"""{"api_endpoint_url": ${consumer.api_endpoint_url}, "consumer_name": ${consumer.consumer_name}, "description": ${consumer.description}, "http_code": 451, "timestamp": "${new DateTime()}"}"""))
+      Failure("consumer limit reached", 451)
     }
   }
 
