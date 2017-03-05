@@ -84,6 +84,59 @@ Defines all routes and adds CORS support. Each route is first checked for the li
 #### ValidateLimit
 Responsible for checking the Authorization Header and enforcing a request limit. For the short-term persistency, a Redis is used with custom keys (based on the Token and a timestamp) with a pre-set TimeToLive value (100 per default, can be changed dynamically by using the `/config` route). The amount of keys with the token as prefix is used to calculate whether an additional request is allowed or not.
 
+## Logging
+
+### marketSituation
+
+![](docs/ms_log.png)
+
+Whenever a merchant adds or changes an offer, the situation on the marketplace changes. The marketplace takes a snapshots of the updated offers that are available for consumer with following data.
+
+```
+marketSituation: {
+	timestamp
+	trigger
+	merchant_id
+	product_id
+	offers: { merchant_id -> Offer }
+}
+
+Offer: {
+	offer_id
+	uid
+	product_id
+	quality
+	merchant_id
+	amount
+	price
+	shipping_time_standard
+	shipping_time_prime
+	prime
+}
+```
+
+### buyOffer
+
+![](docs/bo_log.png)
+
+Whenever a consumer buys an offer, this transaction is logged as _buyOffer_ message and the merchant is notified on his _/sold_ endpoint.
+
+```
+buyOffer: {
+	amount
+	consumer_id
+	http_code
+	left_in_stock
+	merchant_id
+	offer_id
+	price
+	product_id
+	quality
+	timestamp
+	uid
+}
+```
+
 ## Application Overview
 
 | Repo | Branch 	| Deployment to  	| Status | Description |
