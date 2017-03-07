@@ -218,7 +218,7 @@ object DatabaseStore {
 
     var merchant: Option[Merchant] = None
     var merchant_id: String = ""
-    offerResult.flatMap(offer => DatabaseStore.getMerchant(offer.merchant_id.get)) match {
+    offerResult.flatMap(offer => DatabaseStore.getMerchant(offer.merchant_id.get, return_token = true)) match {
       case Success(merchantFound) => {
         merchant = Some(merchantFound)
         merchant_id = merchantFound.merchant_id.getOrElse("")
@@ -472,17 +472,27 @@ object DatabaseStore {
     }
   }
 
-  def getMerchant(search_parameter: String, search_with_token: Boolean = false): Result[Merchant] = {
+  def getMerchant(search_parameter: String, search_with_token: Boolean = false, return_token: Boolean = false): Result[Merchant] = {
     val res = Try(DB readOnly { implicit session =>
       var sql_query = sql""
-      if (!search_with_token) {
+      if (!search_with_token && !return_token) {
         sql_query =
           sql"""SELECT merchant_id, api_endpoint_url, merchant_name, algorithm_name, NULL AS merchant_token
           FROM merchants
           WHERE merchant_id = $search_parameter"""
-      } else {
+      } else if (!search_with_token && return_token) {
+        sql_query =
+          sql"""SELECT merchant_id, api_endpoint_url, merchant_name, algorithm_name, merchant_token
+          FROM merchants
+          WHERE merchant_token = $search_parameter"""
+      } else if (search_with_token && !return_token) {
         sql_query =
           sql"""SELECT merchant_id, api_endpoint_url, merchant_name, algorithm_name, NULL AS merchant_token
+          FROM merchants
+          WHERE merchant_token = $search_parameter"""
+      } else if (search_with_token && return_token) {
+        sql_query =
+          sql"""SELECT merchant_id, api_endpoint_url, merchant_name, algorithm_name, merchant_token
           FROM merchants
           WHERE merchant_token = $search_parameter"""
       }
