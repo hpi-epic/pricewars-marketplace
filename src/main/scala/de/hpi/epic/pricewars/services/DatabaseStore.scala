@@ -484,7 +484,7 @@ object DatabaseStore {
         sql_query =
           sql"""SELECT merchant_id, api_endpoint_url, merchant_name, algorithm_name, merchant_token
           FROM merchants
-          WHERE merchant_token = $search_parameter"""
+          WHERE merchant_id = $search_parameter"""
       } else if (search_with_token && !return_token) {
         sql_query =
           sql"""SELECT merchant_id, api_endpoint_url, merchant_name, algorithm_name, NULL AS merchant_token
