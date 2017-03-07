@@ -23,7 +23,7 @@ object MerchantConnector {
   val remove_merchant = config.getBoolean("remove_merchant_on_notification_error")
 
   def notifyMerchant(merchant: Merchant, offer_id: Long, amount: Int, price: BigDecimal, offer: Offer) = {
-    val json = s"""{"offer_id": $offer_id, "uid": ${offer.uid}, "product_id": ${offer.product_id}, "quality": ${offer.quality}, "amount_sold": $amount, "price_sold": $price, "price": ${offer.price}, "merchant_id": "${merchant.merchant_id.get}", "amount": ${offer.amount}}"""
+    val json = s"""{"offer_id": $offer_id, "uid": ${offer.uid}, "product_id": ${offer.product_id}, "quality": ${offer.quality}, "amount_sold": $amount, "price_sold": $price, "price": ${offer.price}, "merchant_id": "${merchant.merchant_id.get}", "merchant_token": "${merchant.merchant_token.get}", "amount": ${offer.amount}}"""
     val request = (IO(Http) ? HttpRequest(POST,
       Uri(merchant.api_endpoint_url + "/sold"),
       entity = HttpEntity(MediaTypes.`application/json`, json)
