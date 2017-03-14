@@ -113,17 +113,17 @@ object DatabaseStore {
       })
       res match {
         case scala.util.Success(id) => {
-          kafka_producer.send(KafkaProducerRecord("addOffer", s"""{"offer_id": $id, "uid": ${offer.uid}, "product_id": ${offer.product_id}, "quality": ${offer.quality}, "merchant_id": ${merchant.merchant_id.get}, "amount": ${offer.amount}, "price": ${offer.price}, "shipping_time_standard": ${offer.shipping_time.standard}, "shipping_time_prime": ${offer.shipping_time.prime.getOrElse(0)}, "prime": ${offer.prime}, "signature": "${offer.signature.getOrElse("")}", "http_code": 200, "timestamp": "${new DateTime()}"}"""))
+          kafka_producer.send(KafkaProducerRecord("addOffer", s"""{"offer_id": $id, "uid": ${offer.uid}, "product_id": ${offer.product_id}, "quality": ${offer.quality}, "merchant_id": "${merchant.merchant_id.get}", "amount": ${offer.amount}, "price": ${offer.price}, "shipping_time_standard": ${offer.shipping_time.standard}, "shipping_time_prime": ${offer.shipping_time.prime.getOrElse(0)}, "prime": ${offer.prime}, "signature": "${offer.signature.getOrElse("")}", "http_code": 200, "timestamp": "${new DateTime()}"}"""))
           logCurrentMarketSituation(offer.product_id, "addOffer", merchant.merchant_id.get)
           Success(offer.copy(offer_id = Some(id), signature = None, merchant_id = Some(merchant.merchant_id.get)))
         }
         case scala.util.Failure(e) => {
-          kafka_producer.send(KafkaProducerRecord("addOffer", s"""{"uid": ${offer.uid}, "product_id": ${offer.product_id}, "quality": ${offer.quality}, "merchant_id": ${merchant.merchant_id.get}, "amount": ${offer.amount}, "price": ${offer.price}, "shipping_time_standard": ${offer.shipping_time.standard}, "shipping_time_prime": ${offer.shipping_time.prime.getOrElse(0)}, "prime": ${offer.prime}, "signature": "${offer.signature.getOrElse("")}", "http_code": 500, "timestamp": "${new DateTime()}"}"""))
+          kafka_producer.send(KafkaProducerRecord("addOffer", s"""{"uid": ${offer.uid}, "product_id": ${offer.product_id}, "quality": ${offer.quality}, "merchant_id": "${merchant.merchant_id.get}", "amount": ${offer.amount}, "price": ${offer.price}, "shipping_time_standard": ${offer.shipping_time.standard}, "shipping_time_prime": ${offer.shipping_time.prime.getOrElse(0)}, "prime": ${offer.prime}, "signature": "${offer.signature.getOrElse("")}", "http_code": 500, "timestamp": "${new DateTime()}"}"""))
           Failure(e.getMessage, 500)
         }
       }
     } else {
-      kafka_producer.send(KafkaProducerRecord("addOffer", s"""{"uid": ${offer.uid}, "product_id": ${offer.product_id}, "quality": ${offer.quality}, "merchant_id": ${merchant.merchant_id.get}, "amount": ${offer.amount}, "price": ${offer.price}, "shipping_time_standard": ${offer.shipping_time.standard}, "shipping_time_prime": ${offer.shipping_time.prime.getOrElse(0)}, "prime": ${offer.prime}, "signature": "${offer.signature.getOrElse("")}", "http_code": 451, "timestamp": "${new DateTime()}"}"""))
+      kafka_producer.send(KafkaProducerRecord("addOffer", s"""{"uid": ${offer.uid}, "product_id": ${offer.product_id}, "quality": ${offer.quality}, "merchant_id": "${merchant.merchant_id.get}", "amount": ${offer.amount}, "price": ${offer.price}, "shipping_time_standard": ${offer.shipping_time.standard}, "shipping_time_prime": ${offer.shipping_time.prime.getOrElse(0)}, "prime": ${offer.prime}, "signature": "${offer.signature.getOrElse("")}", "http_code": 451, "timestamp": "${new DateTime()}"}"""))
       Failure("Invalid signature", 451)
     }
   }
@@ -309,20 +309,20 @@ object DatabaseStore {
       }
       res match {
         case scala.util.Success(Some(v)) => {
-          kafka_producer.send(KafkaProducerRecord("restockOffer", s"""{"offer_id": $offer_id, "amount": $amount, "signature": "$signature", "merchant_id": ${merchant.merchant_id.get}, "http_code": 200, "timestamp": "${new DateTime()}"}"""))
+          kafka_producer.send(KafkaProducerRecord("restockOffer", s"""{"offer_id": $offer_id, "amount": $amount, "signature": "$signature", "merchant_id": "${merchant.merchant_id.get}", "http_code": 200, "timestamp": "${new DateTime()}"}"""))
           Success(v)
         }
         case scala.util.Success(None) => {
-          kafka_producer.send(KafkaProducerRecord("restockOffer", s"""{"offer_id": $offer_id, "amount": $amount, "signature": "$signature", "merchant_id": ${merchant.merchant_id.get}, "http_code": 404, "timestamp": "${new DateTime()}"}"""))
+          kafka_producer.send(KafkaProducerRecord("restockOffer", s"""{"offer_id": $offer_id, "amount": $amount, "signature": "$signature", "merchant_id": "${merchant.merchant_id.get}", "http_code": 404, "timestamp": "${new DateTime()}"}"""))
           Failure("item not found", 404)
         }
         case scala.util.Failure(e) => {
-          kafka_producer.send(KafkaProducerRecord("restockOffer", s"""{"offer_id": $offer_id, "amount": $amount, "signature": "$signature", "merchant_id": ${merchant.merchant_id.get}, "http_code": 417, "timestamp": "${new DateTime()}"}"""))
+          kafka_producer.send(KafkaProducerRecord("restockOffer", s"""{"offer_id": $offer_id, "amount": $amount, "signature": "$signature", "merchant_id": "${merchant.merchant_id.get}", "http_code": 417, "timestamp": "${new DateTime()}"}"""))
           Failure(e.getMessage, 417)
         }
       }
     } else {
-      kafka_producer.send(KafkaProducerRecord("restockOffer", s"""{"offer_id": $offer_id, "amount": $amount, "signature": "$signature", "merchant_id": ${merchant.merchant_id.get}, "http_code": 451, "timestamp": "${new DateTime()}"}"""))
+      kafka_producer.send(KafkaProducerRecord("restockOffer", s"""{"offer_id": $offer_id, "amount": $amount, "signature": "$signature", "merchant_id": "${merchant.merchant_id.get}", "http_code": 451, "timestamp": "${new DateTime()}"}"""))
       Failure("Invalid signature", 451)
     }
   }
@@ -369,11 +369,11 @@ object DatabaseStore {
     })
     res match {
       case scala.util.Success(created_merchant) => {
-        kafka_producer.send(KafkaProducerRecord("addMerchant", s"""{"merchant_id": ${created_merchant.merchant_id.get} "api_endpoint_url": ${merchant.api_endpoint_url}, "merchant_name": ${merchant.merchant_name}, "algorithm_name": ${merchant.algorithm_name}, "http_code": 200, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("addMerchant", s"""{"merchant_id": "${created_merchant.merchant_id.get}", "api_endpoint_url": "${merchant.api_endpoint_url}", "merchant_name": "${merchant.merchant_name}", "algorithm_name": "${merchant.algorithm_name}", "http_code": 200, "timestamp": "${new DateTime()}"}"""))
         Success(merchant.copy(merchant_id = created_merchant.merchant_id, merchant_token = created_merchant.merchant_token))
       }
       case scala.util.Failure(e) => {
-        kafka_producer.send(KafkaProducerRecord("addMerchant", s"""{"api_endpoint_url": ${merchant.api_endpoint_url}, "merchant_name": ${merchant.merchant_name}, "algorithm_name": ${merchant.algorithm_name}, "http_code": 500, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("addMerchant", s"""{"api_endpoint_url": "${merchant.api_endpoint_url}", "merchant_name": "${merchant.merchant_name}", "algorithm_name": "${merchant.algorithm_name}", "http_code": 500, "timestamp": "${new DateTime()}"}"""))
         Failure(e.getMessage, 500)
       }
     }
@@ -391,11 +391,11 @@ object DatabaseStore {
     })
     res match {
       case scala.util.Success(created_merchant) => {
-        kafka_producer.send(KafkaProducerRecord("updateMerchant", s"""{"merchant_id": ${created_merchant.merchant_id.get} "api_endpoint_url": ${merchant.api_endpoint_url}, "merchant_name": ${merchant.merchant_name}, "algorithm_name": ${merchant.algorithm_name}, "http_code": 200, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("updateMerchant", s"""{"merchant_id": "${created_merchant.merchant_id.get}", "api_endpoint_url": "${merchant.api_endpoint_url}", "merchant_name": "${merchant.merchant_name}", "algorithm_name": "${merchant.algorithm_name}", "http_code": 200, "timestamp": "${new DateTime()}"}"""))
         Success(merchant.copy(merchant_id = created_merchant.merchant_id, merchant_token = created_merchant.merchant_token))
       }
       case scala.util.Failure(e) => {
-        kafka_producer.send(KafkaProducerRecord("updateMerchant", s"""{"api_endpoint_url": ${merchant.api_endpoint_url}, "merchant_name": ${merchant.merchant_name}, "algorithm_name": ${merchant.algorithm_name}, "http_code": 500, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("updateMerchant", s"""{"api_endpoint_url": "${merchant.api_endpoint_url}", "merchant_name": "${merchant.merchant_name}", "algorithm_name": "${merchant.algorithm_name}", "http_code": 500, "timestamp": "${new DateTime()}"}"""))
         Failure(e.getMessage, 500)
       }
     }
@@ -545,16 +545,16 @@ object DatabaseStore {
       })
       res match {
         case scala.util.Success(created_consumer) => {
-          kafka_producer.send(KafkaProducerRecord("addConsumer", s"""{"consumer_id": ${created_consumer.consumer_id.get}, "api_endpoint_url": ${consumer.api_endpoint_url}, "consumer_name": ${consumer.consumer_name}, "description": ${consumer.description}, "http_code": 200, "timestamp": "${new DateTime()}"}"""))
+          kafka_producer.send(KafkaProducerRecord("addConsumer", s"""{"consumer_id": "${created_consumer.consumer_id.get}", "api_endpoint_url": "${consumer.api_endpoint_url}", "consumer_name": "${consumer.consumer_name}", "description": "${consumer.description}", "http_code": 200, "timestamp": "${new DateTime()}"}"""))
           Success(consumer.copy(consumer_id = created_consumer.consumer_id, consumer_token = created_consumer.consumer_token))
         }
         case scala.util.Failure(e) => {
-          kafka_producer.send(KafkaProducerRecord("addConsumer", s"""{"api_endpoint_url": ${consumer.api_endpoint_url}, "consumer_name": ${consumer.consumer_name}, "description": ${consumer.description}, "http_code": 500, "timestamp": "${new DateTime()}"}"""))
+          kafka_producer.send(KafkaProducerRecord("addConsumer", s"""{"api_endpoint_url": "${consumer.api_endpoint_url}", "consumer_name": "${consumer.consumer_name}", "description": "${consumer.description}", "http_code": 500, "timestamp": "${new DateTime()}"}"""))
           Failure(e.getMessage, 500)
         }
       }
     } else {
-      kafka_producer.send(KafkaProducerRecord("addConsumer", s"""{"api_endpoint_url": ${consumer.api_endpoint_url}, "consumer_name": ${consumer.consumer_name}, "description": ${consumer.description}, "http_code": 451, "timestamp": "${new DateTime()}"}"""))
+      kafka_producer.send(KafkaProducerRecord("addConsumer", s"""{"api_endpoint_url": "${consumer.api_endpoint_url}", "consumer_name": "${consumer.consumer_name}", "description": "${consumer.description}", "http_code": 451, "timestamp": "${new DateTime()}"}"""))
       Failure("consumer limit reached", 451)
     }
   }
