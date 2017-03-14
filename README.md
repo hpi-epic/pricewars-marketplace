@@ -17,7 +17,7 @@ The meta repository containing general information can be found [here](https://g
 
 ## Requirements
 
-The marketplace is written in Scala and managed with sbt. Ensure to have a sbt installed and set up on your computer (see [the reference](http://www.scala-sbt.org/0.13/docs/Setup.html) for more information on getting started.
+The marketplace is written in Scala and managed with sbt. Ensure to have a sbt installed and set up on your computer (see [the reference](http://www.scala-sbt.org/0.13/docs/Setup.html) for more information on getting started).
 
 ## Setup
 
