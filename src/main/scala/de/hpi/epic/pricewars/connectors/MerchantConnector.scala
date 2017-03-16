@@ -28,13 +28,21 @@ object MerchantConnector {
       Uri(merchant.api_endpoint_url + "/sold"),
       entity = HttpEntity(MediaTypes.`application/json`, json)
     )).mapTo[HttpResponse]
-    request.onFailure{ case _ =>
+    def errorHandler(): Unit = {
       if (remove_merchant) {
         println("merchant not responding, killing: " + merchant.algorithm_name)
         DatabaseStore.deleteMerchant(merchant.merchant_id.get, delete_with_token = false)
       } else {
         println("merchant not responding, not killing: " + merchant.algorithm_name)
       }
+    }
+    request.onFailure {
+      case t: Throwable =>
+        println(t.getMessage)
+        println(t)
+        errorHandler()
+      case _ =>
+        errorHandler()
     }
     request.onSuccess{ case HttpResponse(status, _, _, _) => {
       if (status == StatusCodes.PreconditionRequired) {
