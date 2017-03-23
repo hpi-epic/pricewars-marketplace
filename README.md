@@ -86,6 +86,8 @@ Responsible for checking the Authorization Header and enforcing a request limit.
 
 ## Logging
 
+The marketplace logs many actions to Kafka. Some are important for merchants as historical record of the simulation and can be used for machine learning. The next sections will shortly show some example log messages, when they are created and what they contain.
+
 ### marketSituation
 
 ![](docs/ms_log.png)
