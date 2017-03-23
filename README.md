@@ -36,7 +36,9 @@ All pre-defined config settings are located in `/src/main/resources/application.
 
 ## Concept
 
-The marketplace acts as the main platform to trade products offered by different merchants, to enforce time limits and is the main source to feed Kafka with various logs. Therefore (and due to the authorization required for several actions), it is the main source of trust within a simulation. 
+The marketplace acts as the main platform to trade products offered by different merchants, to enforce time limits and is the main source to feed Kafka with various logs. Therefore (and due to the authorization required for several actions), it is the main source of trust within a simulation.
+
+See the last subsection [here](https://github.com/hpi-epic/pricewars-marketplace#logging) for an illustration.
 
 ### Authorization
 
@@ -78,6 +80,32 @@ Besides checking the for right product UID and the merchant ID (both must match 
 #### Disallow decreasing the amount of offers
 
 In our first prototypes, we allowed the merchant to decrease the amount of offers he posted to the marketplace by "restocking" a negative amount. Until we enforced the usage of signatures, this was enough for the merchant to implement a unrestricted pricing strategy. However, we encountered a problem with this process when adding the requirement for the signature. First, a merchant is unable to get a signature with a negative amount (the marketplace checks for equality of the amount given by the merchant and the amount included in the signature) and second, a signature that has been redeemed can't be used a second time to later increase the value again. Until now, we haven't implemented a solution for this scenario (it's documented as described here in our API definition) but we thought of a "simple" solution: Whenever the merchant requests to decrease the amount of an offer, the marketplace should lower the value in the database as requested (if the remaining result is equal to or higher than zero) and should generate a new signature with the same information (exactly as the producer would have done). Without logging any price to the revenue topic (it has been paid earlier when getting these products for the first time), this is returned to the merchant, which is than responsible for saving that signature and handling it carefully. We imagine, that this should be quite simple to implement and enough to solve the problem.
+
+### Concept Illustration
+
+![](docs/signature_and_token.png)
+
+#### Process
+
+1. Merchant buys a product from the producer
+2. Producer charges merchant for product by logging the sale with the merchants ID to Kafka
+3. Merchant adds the product as offer to the marketplace
+4. Marketplace needs to confirm that the merchant really ownes the product with given properties
+	* a) maybe ask producer?
+5. offer is now available for consumers and transaction is also logged to Kafka
+
+#### Requirement
+
+1. Marketplace should not allow merchants to offer products, they didn't buy from the producer
+2. Marketplace should not accept products that are altered by the merchant
+3. Merchants must not be able to buy products (and thus generate loss) for other merchants
+4. Transactions should be logged with public unique identifiers for merchants
+5. Producer should not request the marketplace to get the identity of the merchant and the merchant should not provide its identity to the producer
+
+#### Solutions from concept
+
+* The **signature** solves problems 1 and 2
+* The **hashed token concept** solves 3, 4 and 5
 
 ## Important components
 
