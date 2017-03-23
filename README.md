@@ -94,7 +94,7 @@ In our first prototypes, we allowed the merchant to decrease the amount of offer
 	* a) maybe ask producer?
 5. offer is now available for consumers and transaction is also logged to Kafka
 
-#### Requirement
+#### Requirements
 
 1. Marketplace should not allow merchants to offer products, they didn't buy from the producer
 2. Marketplace should not accept products that are altered by the merchant
@@ -104,8 +104,8 @@ In our first prototypes, we allowed the merchant to decrease the amount of offer
 
 #### Solutions from concept
 
-* The **signature** solves problems 1 and 2
-* The **hashed token concept** solves 3, 4 and 5
+* The **signature** satisfies requirements 1 and 2
+* The **hashed token concept** satisfies 3, 4 and 5
 
 ## Important components
 
