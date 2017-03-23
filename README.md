@@ -38,7 +38,7 @@ All pre-defined config settings are located in `/src/main/resources/application.
 
 The marketplace acts as the main platform to trade products offered by different merchants, to enforce time limits and is the main source to feed Kafka with various logs. Therefore (and due to the authorization required for several actions), it is the main source of trust within a simulation.
 
-See the last subsection [here](https://github.com/hpi-epic/pricewars-marketplace#logging) for an illustration.
+See the last subsection [here](https://github.com/hpi-epic/pricewars-marketplace#concept-illustration) for an illustration.
 
 ### Authorization
 
