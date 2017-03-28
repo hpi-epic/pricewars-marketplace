@@ -22,12 +22,14 @@ class OfferTests extends Specification with BeforeAfterEach with Specs2RouteTest
   )
 
   private val merchants = Seq(
-    Merchant("testvm1:8080", "testuser1", "algo", Some("token1"), Some("hash1")),
-    Merchant("testvm2:8090", "testuser2", "rythm", Some("token2"), Some("hash2"))
+    Merchant("testvm1:8080", "testuser1", "algo", Some("hash1"), Some("token1")),
+    Merchant("testvm2:8090", "testuser2", "rythm", Some("hash2"), Some("token2"))
   )
 
   override def before: Unit = {
     super.before
+    DatabaseStore.reset()
+    DatabaseStore.setup()
     DatabaseStore.addMerchant(merchants.head)
     DatabaseStore.addMerchant(merchants(1))
     DatabaseStore.addOffer(offers.head, merchants.head)

@@ -175,11 +175,11 @@ object DatabaseStore {
     })
     res match {
       case scala.util.Success(v) => {
-        kafka_producer.send(KafkaProducerRecord("getOffers", s"""{"product_id": $product_id, "http_code": 200, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("getOffers", s"""{"product_id": ${product_id.getOrElse("")}, "http_code": 200, "timestamp": "${new DateTime()}"}"""))
         Success(v)
       }
       case scala.util.Failure(e) => {
-        kafka_producer.send(KafkaProducerRecord("getOffers", s"""{"product_id": $product_id, "http_code": 500, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("getOffers", s"""{"product_id": ${product_id.getOrElse("")}, "http_code": 500, "timestamp": "${new DateTime()}"}"""))
         Failure(e.getMessage, 500)
       }
     }
@@ -337,14 +337,14 @@ object DatabaseStore {
       case scala.util.Success(list) => {
         if (list.nonEmpty) {
           val buf = new StringBuilder
-          buf ++= s"""{"timestamp": "${new DateTime()}", "trigger": "$trigger", "merchant_id": "$merchant_id", "product_id": $product_id, "offers": {"""
+          buf ++= s"""{"timestamp": "${new DateTime()}", "trigger": "$trigger", "merchant_id": "$merchant_id", "product_id": $product_id, "offers": ["""
           list.foreach(offer => {
-            buf ++= s""""${offer.merchant_id.get}": {"offer_id": ${offer.offer_id.get}, "uid": ${offer.uid}, "product_id": ${offer.product_id}, "quality": ${offer.quality}, "merchant_id": "${offer.merchant_id.get}", "amount": ${offer.amount}, "price": ${offer.price}, "shipping_time_standard": ${offer.shipping_time.standard}, "shipping_time_prime": ${offer.shipping_time.prime.getOrElse(0)}, "prime": ${offer.prime}"""
+            buf ++= s""""{"offer_id": ${offer.offer_id.get}, "uid": ${offer.uid}, "product_id": ${offer.product_id}, "quality": ${offer.quality}, "merchant_id": "${offer.merchant_id.get}", "amount": ${offer.amount}, "price": ${offer.price}, "shipping_time_standard": ${offer.shipping_time.standard}, "shipping_time_prime": ${offer.shipping_time.prime.getOrElse(0)}, "prime": ${offer.prime}"""
             if (offer != list.last) {
               buf ++= s"""}, """
             }
           })
-          buf ++= s"""}}}"""
+          buf ++= s"""}]}"""
           kafka_producer.send(KafkaProducerRecord("marketSituation", buf.toString))
         }
       }
