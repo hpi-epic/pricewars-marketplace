@@ -141,9 +141,11 @@ marketSituation: {
 	trigger
 	merchant_id
 	product_id
-	offers: { merchant_id -> Offer }
+	offers: [ Offer ]
 }
+```
 
+```
 Offer: {
 	offer_id
 	uid
