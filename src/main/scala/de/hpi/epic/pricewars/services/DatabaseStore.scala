@@ -47,7 +47,8 @@ object DatabaseStore {
         merchant_token TEXT UNIQUE,
         api_endpoint_url TEXT NOT NULL,
         merchant_name TEXT NOT NULL,
-        algorithm_name TEXT NOT NULL
+        algorithm_name TEXT NOT NULL,
+        register_timestamp timestamp not null default CURRENT_TIMESTAMP
       )""".execute.apply()
       sql"""CREATE TABLE IF NOT EXISTS consumers (
         consumer_id TEXT NOT NULL UNIQUE PRIMARY KEY,
