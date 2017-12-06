@@ -369,14 +369,14 @@ object DatabaseStore {
          RETURNING merchant_id, merchant_token, api_endpoint_url, merchant_name, algorithm_name""".map(rs => Merchant(rs)).list.apply().headOption.get
     })
     res match {
-      case scala.util.Success(created_merchant) => {
-        kafka_producer.send(KafkaProducerRecord("addMerchant", s"""{"merchant_id": "${created_merchant.merchant_id.get}", "api_endpoint_url": "${merchant.api_endpoint_url}", "merchant_name": "${merchant.merchant_name}", "algorithm_name": "${merchant.algorithm_name}", "http_code": 200, "timestamp": "${new DateTime()}"}"""))
+      case scala.util.Success(created_merchant) =>
+        val timestamp = new DateTime()
+        kafka_producer.send(KafkaProducerRecord("addMerchant", s"""{"merchant_id": "${created_merchant.merchant_id.get}", "api_endpoint_url": "${merchant.api_endpoint_url}", "merchant_name": "${merchant.merchant_name}", "algorithm_name": "${merchant.algorithm_name}", "http_code": 200, "timestamp": "$timestamp"}"""))
+        kafka_producer.send(KafkaProducerRecord("inventory_prices", s"""{"merchant_id": "${created_merchant.merchant_id.get}", "price_per_minute": 5, "timestamp": "$timestamp"}"""))
         Success(merchant.copy(merchant_id = created_merchant.merchant_id, merchant_token = created_merchant.merchant_token))
-      }
-      case scala.util.Failure(e) => {
+      case scala.util.Failure(e) =>
         kafka_producer.send(KafkaProducerRecord("addMerchant", s"""{"api_endpoint_url": "${merchant.api_endpoint_url}", "merchant_name": "${merchant.merchant_name}", "algorithm_name": "${merchant.algorithm_name}", "http_code": 500, "timestamp": "${new DateTime()}"}"""))
         Failure(e.getMessage, 500)
-      }
     }
   }
   // UPDATE table SET user='$user', name='$name' where id ='$id'"
