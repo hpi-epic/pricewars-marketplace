@@ -17,6 +17,7 @@ class MarketplaceServiceActor extends Actor with ActorLogging with MarketplaceSe
 }
 
 trait MarketplaceService extends HttpService with CORSSupport {
+  var default_inventory_price: BigDecimal = 0
   val route: Route = respondWithMediaType(MediaTypes.`application/json`) {
     logRequestResponse("marketplace", Logging.InfoLevel) {
       cors {
@@ -144,7 +145,7 @@ trait MarketplaceService extends HttpService with CORSSupport {
                 entity(as[Merchant]) { merchant =>
                   detach() {
                     complete {
-                      DatabaseStore.addMerchant(merchant).successHttpCode(StatusCodes.Created)
+                      DatabaseStore.addMerchant(merchant, default_inventory_price).successHttpCode(StatusCodes.Created)
                     }
                   }
                 }
@@ -293,7 +294,22 @@ trait MarketplaceService extends HttpService with CORSSupport {
                   }
                 }
               }
+          } ~
+        path("inventory_price") {
+          put {
+            entity(as[InventoryPrice]) { inventory_price =>
+              inventory_price.merchant_id match {
+                case Some(id) =>
+                  DatabaseStore.changeInventoryPrice(inventory_price.price, id)
+                case None =>
+                  default_inventory_price = inventory_price.price
+              }
+              complete {
+                StatusCode.int2StatusCode(200) -> s"""{}"""
+              }
+            }
           }
+        }
       }
     }
   }

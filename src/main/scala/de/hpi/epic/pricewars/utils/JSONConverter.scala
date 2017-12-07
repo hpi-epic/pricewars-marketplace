@@ -2,7 +2,7 @@ package de.hpi.epic.pricewars.utils
 
 import de.hpi.epic.pricewars.data._
 import spray.httpx.SprayJsonSupport
-import spray.json.{DefaultJsonProtocol, JsonFormat}
+import spray.json.{DefaultJsonProtocol, JsonFormat, RootJsonFormat}
 
 object JSONConverter extends DefaultJsonProtocol with SprayJsonSupport {
   implicit val shippingTimeFormat = jsonFormat2(ShippingTime.apply)
@@ -13,5 +13,6 @@ object JSONConverter extends DefaultJsonProtocol with SprayJsonSupport {
   implicit val productFormat = jsonFormat3(Product.apply)
   implicit val buyRequestFormat = jsonFormat3(BuyRequest)
   implicit val settingsFormat = jsonFormat3(Settings)
+  implicit val inventoryPriceFormat: RootJsonFormat[InventoryPrice] = jsonFormat2(InventoryPrice)
   implicit def failureFormat[A :JsonFormat] = jsonFormat2(Failure.apply[A])
 }
