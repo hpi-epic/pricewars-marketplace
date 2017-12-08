@@ -741,6 +741,21 @@ object DatabaseStore {
     }
   }
 
+  def getInventoryPrice(merchant_id: String): Result[BigDecimal] = {
+    val result = Try(DB localTx { implicit session =>
+      sql"""SELECT inventory_price
+        FROM merchants
+        WHERE merchant_id = $merchant_id"""
+        .map(rs => rs.bigDecimal("inventory_price")).list.apply().headOption.get
+    })
+    result match {
+      case scala.util.Success(price) =>
+        Success(price)
+      case scala.util.Failure(e) =>
+        Failure(e.getMessage, 500)
+    }
+  }
+
   def changeInventoryPrice(price: BigDecimal, merchant_id: String): Result[Merchant] = {
     val res = Try(DB localTx { implicit session =>
       sql"""UPDATE merchants
@@ -751,7 +766,7 @@ object DatabaseStore {
     })
     res match {
       case scala.util.Success(merchant) =>
-        logInventoryPrice(price,merchant_id)
+        logInventoryPrice(price, merchant_id)
         Success(merchant)
       case scala.util.Failure(e) =>
         Failure(e.getMessage, 500)

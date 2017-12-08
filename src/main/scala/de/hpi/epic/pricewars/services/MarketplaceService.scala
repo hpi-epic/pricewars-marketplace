@@ -296,6 +296,16 @@ trait MarketplaceService extends HttpService with CORSSupport {
               }
           } ~
         path("inventory_price") {
+          get {
+            optionalHeaderValueByName(HttpHeaders.Authorization.name) { authorizationHeader =>
+              complete {
+                DatabaseStore.getMerchantByToken(ValidateLimit.getTokenString(authorizationHeader).getOrElse(""))
+                  .flatMap(merchant => {
+                    DatabaseStore.getInventoryPrice(merchant.merchant_id.get)
+                  })
+              }
+            }
+          } ~
           put {
             entity(as[InventoryPrice]) { inventory_price =>
               complete {
