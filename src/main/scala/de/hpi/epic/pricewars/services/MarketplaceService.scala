@@ -298,14 +298,14 @@ trait MarketplaceService extends HttpService with CORSSupport {
         path("inventory_price") {
           put {
             entity(as[InventoryPrice]) { inventory_price =>
-              inventory_price.merchant_id match {
-                case Some(id) =>
-                  DatabaseStore.changeInventoryPrice(inventory_price.price, id)
-                case None =>
-                  default_inventory_price = inventory_price.price
-              }
               complete {
-                StatusCode.int2StatusCode(200) -> s"""{}"""
+                inventory_price.merchant_id match {
+                  case Some(id) =>
+                    DatabaseStore.changeInventoryPrice(inventory_price.price, id)
+                  case None =>
+                    default_inventory_price = inventory_price.price
+                    StatusCode.int2StatusCode(200) -> s"""{}"""
+                }
               }
             }
           }

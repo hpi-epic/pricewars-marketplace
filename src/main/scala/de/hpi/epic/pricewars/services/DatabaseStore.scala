@@ -19,9 +19,6 @@ object DatabaseStore {
   DBs.setupAll()
 
   def setup(): Unit = {
-    // Enable to reset database on every restart
-    // reset()
-
     DB localTx { implicit session =>
       sql"""CREATE EXTENSION IF NOT EXISTS pgcrypto;""".execute.apply()
       sql"""CREATE OR REPLACE FUNCTION random_string(length INTEGER)
@@ -48,6 +45,7 @@ object DatabaseStore {
         api_endpoint_url TEXT NOT NULL,
         merchant_name TEXT NOT NULL,
         algorithm_name TEXT NOT NULL,
+        inventory_price NUMERIC(11,2) NOT NULL,
         register_timestamp timestamp not null default CURRENT_TIMESTAMP
       )""".execute.apply()
       sql"""CREATE TABLE IF NOT EXISTS consumers (
@@ -364,7 +362,8 @@ object DatabaseStore {
            token.value,
            ${merchant.api_endpoint_url},
            ${merchant.merchant_name},
-           ${merchant.algorithm_name}
+           ${merchant.algorithm_name},
+           $inventory_price
          FROM token_hash, token
          RETURNING merchant_id, merchant_token, api_endpoint_url, merchant_name, algorithm_name""".map(rs => Merchant(rs)).list.apply().headOption.get
     })
@@ -372,7 +371,7 @@ object DatabaseStore {
       case scala.util.Success(created_merchant) =>
         val timestamp = new DateTime()
         kafka_producer.send(KafkaProducerRecord("addMerchant", s"""{"merchant_id": "${created_merchant.merchant_id.get}", "api_endpoint_url": "${merchant.api_endpoint_url}", "merchant_name": "${merchant.merchant_name}", "algorithm_name": "${merchant.algorithm_name}", "http_code": 200, "timestamp": "$timestamp"}"""))
-        changeInventoryPrice(inventory_price, created_merchant.merchant_id.get, timestamp)
+        logInventoryPrice(inventory_price, created_merchant.merchant_id.get, timestamp)
         Success(merchant.copy(merchant_id = created_merchant.merchant_id, merchant_token = created_merchant.merchant_token))
       case scala.util.Failure(e) =>
         kafka_producer.send(KafkaProducerRecord("addMerchant", s"""{"api_endpoint_url": "${merchant.api_endpoint_url}", "merchant_name": "${merchant.merchant_name}", "algorithm_name": "${merchant.algorithm_name}", "http_code": 500, "timestamp": "${new DateTime()}"}"""))
@@ -742,7 +741,24 @@ object DatabaseStore {
     }
   }
 
-  def changeInventoryPrice(price: BigDecimal, merchant_id: String, timestamp: DateTime = new DateTime): Unit = {
+  def changeInventoryPrice(price: BigDecimal, merchant_id: String): Result[Merchant] = {
+    val res = Try(DB localTx { implicit session =>
+      sql"""UPDATE merchants
+        SET inventory_price = $price
+        WHERE merchant_id = $merchant_id
+        RETURNING merchant_id, merchant_token, api_endpoint_url, merchant_name, algorithm_name"""
+        .map(rs => Merchant(rs)).list.apply().headOption.get
+    })
+    res match {
+      case scala.util.Success(merchant) =>
+        logInventoryPrice(price,merchant_id)
+        Success(merchant)
+      case scala.util.Failure(e) =>
+        Failure(e.getMessage, 500)
+    }
+  }
+
+  def logInventoryPrice(price: BigDecimal, merchant_id: String, timestamp: DateTime = new DateTime): Unit = {
     kafka_producer.send(KafkaProducerRecord("inventory_prices",
       s"""{"merchant_id": "$merchant_id", "price_per_minute": $price, "timestamp": "$timestamp"}"""))
   }
