@@ -17,6 +17,7 @@ class MarketplaceServiceActor extends Actor with ActorLogging with MarketplaceSe
 }
 
 trait MarketplaceService extends HttpService with CORSSupport {
+  var defaultHoldingCostRate: BigDecimal = 0
   val route: Route = respondWithMediaType(MediaTypes.`application/json`) {
     logRequestResponse("marketplace", Logging.InfoLevel) {
       cors {
@@ -144,7 +145,7 @@ trait MarketplaceService extends HttpService with CORSSupport {
                 entity(as[Merchant]) { merchant =>
                   detach() {
                     complete {
-                      DatabaseStore.addMerchant(merchant).successHttpCode(StatusCodes.Created)
+                      DatabaseStore.addMerchant(merchant, defaultHoldingCostRate).successHttpCode(StatusCodes.Created)
                     }
                   }
                 }
@@ -275,7 +276,7 @@ trait MarketplaceService extends HttpService with CORSSupport {
                 StatusCodes.OK ->
                   s"""{
                   "consumer_per_minute": ${ValidateLimit.getConsumerPerMinute},
-                  "max_updates_per_sale": ${ValidateLimit.getMaxUpdatesPerSale}, 
+                  "max_updates_per_sale": ${ValidateLimit.getMaxUpdatesPerSale},
                   "max_req_per_sec": ${ValidateLimit.getMaxReqPerSec}
                 }"""
               }
@@ -293,7 +294,22 @@ trait MarketplaceService extends HttpService with CORSSupport {
                   }
                 }
               }
+          } ~
+        path("holding_cost_rate") {
+          put {
+            entity(as[HoldingCostRate]) { holdingCostRate =>
+              holdingCostRate.merchant_id match {
+                case Some(id) =>
+                  DatabaseStore.changeHoldingCostRate(holdingCostRate.rate, id)
+                case None =>
+                  defaultHoldingCostRate = holdingCostRate.rate
+              }
+              complete {
+                StatusCode.int2StatusCode(200) -> s"""{}"""
+              }
+            }
           }
+        }
       }
     }
   }
