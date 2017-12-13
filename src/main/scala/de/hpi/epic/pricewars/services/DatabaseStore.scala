@@ -355,7 +355,7 @@ object DatabaseStore {
     }
   }
 
-  def addMerchant(merchant: Merchant, inventory_price: BigDecimal): Result[Merchant] = {
+  def addMerchant(merchant: Merchant, holdingCostRate: BigDecimal): Result[Merchant] = {
     val res = Try(DB localTx { implicit session =>
       sql"""WITH token AS (SELECT random_string(64) AS value),
              token_hash AS (SELECT encode(digest(token.value, 'sha256'), 'base64') AS value FROM token)
@@ -372,7 +372,7 @@ object DatabaseStore {
       case scala.util.Success(created_merchant) =>
         val timestamp = new DateTime()
         kafka_producer.send(KafkaProducerRecord("addMerchant", s"""{"merchant_id": "${created_merchant.merchant_id.get}", "api_endpoint_url": "${merchant.api_endpoint_url}", "merchant_name": "${merchant.merchant_name}", "algorithm_name": "${merchant.algorithm_name}", "http_code": 200, "timestamp": "$timestamp"}"""))
-        changeInventoryPrice(inventory_price, created_merchant.merchant_id.get, timestamp)
+        changeHoldingCostRate(holdingCostRate, created_merchant.merchant_id.get, timestamp)
         Success(merchant.copy(merchant_id = created_merchant.merchant_id, merchant_token = created_merchant.merchant_token))
       case scala.util.Failure(e) =>
         kafka_producer.send(KafkaProducerRecord("addMerchant", s"""{"api_endpoint_url": "${merchant.api_endpoint_url}", "merchant_name": "${merchant.merchant_name}", "algorithm_name": "${merchant.algorithm_name}", "http_code": 500, "timestamp": "${new DateTime()}"}"""))
@@ -773,8 +773,8 @@ object DatabaseStore {
     }
   }
 
-  def changeInventoryPrice(price: BigDecimal, merchant_id: String, timestamp: DateTime = new DateTime): Unit = {
-    kafka_producer.send(KafkaProducerRecord("inventory_prices",
-      s"""{"merchant_id": "$merchant_id", "price_per_minute": $price, "timestamp": "$timestamp"}"""))
+  def changeHoldingCostRate(rate: BigDecimal, merchant_id: String, timestamp: DateTime = new DateTime): Unit = {
+    kafka_producer.send(KafkaProducerRecord("holding_cost_rate",
+      s"""{"merchant_id": "$merchant_id", "rate": $rate, "timestamp": "$timestamp"}"""))
   }
 }
