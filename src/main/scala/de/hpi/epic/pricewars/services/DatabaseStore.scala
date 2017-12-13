@@ -45,7 +45,7 @@ object DatabaseStore {
         api_endpoint_url TEXT NOT NULL,
         merchant_name TEXT NOT NULL,
         algorithm_name TEXT NOT NULL,
-        inventory_price NUMERIC(11,2) NOT NULL,
+        holding_cost_rate NUMERIC(11,2) NOT NULL,
         register_timestamp timestamp not null default CURRENT_TIMESTAMP
       )""".execute.apply()
       sql"""CREATE TABLE IF NOT EXISTS consumers (
@@ -353,7 +353,7 @@ object DatabaseStore {
     }
   }
 
-  def addMerchant(merchant: Merchant, inventory_price: BigDecimal): Result[Merchant] = {
+  def addMerchant(merchant: Merchant, holdingCostRate: BigDecimal): Result[Merchant] = {
     val res = Try(DB localTx { implicit session =>
       sql"""WITH token AS (SELECT random_string(64) AS value),
              token_hash AS (SELECT encode(digest(token.value, 'sha256'), 'base64') AS value FROM token)
@@ -363,7 +363,7 @@ object DatabaseStore {
            ${merchant.api_endpoint_url},
            ${merchant.merchant_name},
            ${merchant.algorithm_name},
-           $inventory_price
+           $holdingCostRate
          FROM token_hash, token
          RETURNING merchant_id, merchant_token, api_endpoint_url, merchant_name, algorithm_name""".map(rs => Merchant(rs)).list.apply().headOption.get
     })
@@ -371,7 +371,7 @@ object DatabaseStore {
       case scala.util.Success(created_merchant) =>
         val timestamp = new DateTime()
         kafka_producer.send(KafkaProducerRecord("addMerchant", s"""{"merchant_id": "${created_merchant.merchant_id.get}", "api_endpoint_url": "${merchant.api_endpoint_url}", "merchant_name": "${merchant.merchant_name}", "algorithm_name": "${merchant.algorithm_name}", "http_code": 200, "timestamp": "$timestamp"}"""))
-        logInventoryPrice(inventory_price, created_merchant.merchant_id.get, timestamp)
+        logHoldingCostRate(holdingCostRate, created_merchant.merchant_id.get, timestamp)
         Success(merchant.copy(merchant_id = created_merchant.merchant_id, merchant_token = created_merchant.merchant_token))
       case scala.util.Failure(e) =>
         kafka_producer.send(KafkaProducerRecord("addMerchant", s"""{"api_endpoint_url": "${merchant.api_endpoint_url}", "merchant_name": "${merchant.merchant_name}", "algorithm_name": "${merchant.algorithm_name}", "http_code": 500, "timestamp": "${new DateTime()}"}"""))
@@ -741,40 +741,40 @@ object DatabaseStore {
     }
   }
 
-  def getInventoryPrice(merchant_id: String): Result[BigDecimal] = {
+  def getHoldingCostRate(merchant_id: String): Result[BigDecimal] = {
     val result = Try(DB localTx { implicit session =>
-      sql"""SELECT inventory_price
+      sql"""SELECT holding_cost_rate
         FROM merchants
         WHERE merchant_id = $merchant_id"""
-        .map(rs => rs.bigDecimal("inventory_price")).list.apply().headOption.get
+        .map(rs => rs.bigDecimal("holding_cost_rate")).list.apply().headOption.get
     })
     result match {
-      case scala.util.Success(price) =>
-        Success(price)
+      case scala.util.Success(rate) =>
+        Success(rate)
       case scala.util.Failure(e) =>
         Failure(e.getMessage, 500)
     }
   }
 
-  def changeInventoryPrice(price: BigDecimal, merchant_id: String): Result[Merchant] = {
+  def changeHoldingCostRate(rate: BigDecimal, merchant_id: String): Result[Merchant] = {
     val res = Try(DB localTx { implicit session =>
       sql"""UPDATE merchants
-        SET inventory_price = $price
+        SET holding_cost_rate = $rate
         WHERE merchant_id = $merchant_id
         RETURNING merchant_id, merchant_token, api_endpoint_url, merchant_name, algorithm_name"""
         .map(rs => Merchant(rs)).list.apply().headOption.get
     })
     res match {
       case scala.util.Success(merchant) =>
-        logInventoryPrice(price, merchant_id)
+        logHoldingCostRate(rate, merchant_id)
         Success(merchant)
       case scala.util.Failure(e) =>
         Failure(e.getMessage, 500)
     }
   }
 
-  def logInventoryPrice(price: BigDecimal, merchant_id: String, timestamp: DateTime = new DateTime): Unit = {
-    kafka_producer.send(KafkaProducerRecord("inventory_prices",
-      s"""{"merchant_id": "$merchant_id", "price_per_minute": $price, "timestamp": "$timestamp"}"""))
+  def logHoldingCostRate(rate: BigDecimal, merchant_id: String, timestamp: DateTime = new DateTime): Unit = {
+    kafka_producer.send(KafkaProducerRecord("holding_cost_rate",
+      s"""{"merchant_id": "$merchant_id", "rate": $rate, "timestamp": "$timestamp"}"""))
   }
 }

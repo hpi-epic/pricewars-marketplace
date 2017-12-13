@@ -17,7 +17,7 @@ class MarketplaceServiceActor extends Actor with ActorLogging with MarketplaceSe
 }
 
 trait MarketplaceService extends HttpService with CORSSupport {
-  var default_inventory_price: BigDecimal = 0
+  var defaultHoldingCostRate: BigDecimal = 0
   val route: Route = respondWithMediaType(MediaTypes.`application/json`) {
     logRequestResponse("marketplace", Logging.InfoLevel) {
       cors {
@@ -145,7 +145,7 @@ trait MarketplaceService extends HttpService with CORSSupport {
                 entity(as[Merchant]) { merchant =>
                   detach() {
                     complete {
-                      DatabaseStore.addMerchant(merchant, default_inventory_price).successHttpCode(StatusCodes.Created)
+                      DatabaseStore.addMerchant(merchant, defaultHoldingCostRate).successHttpCode(StatusCodes.Created)
                     }
                   }
                 }
@@ -276,7 +276,7 @@ trait MarketplaceService extends HttpService with CORSSupport {
                 StatusCodes.OK ->
                   s"""{
                   "consumer_per_minute": ${ValidateLimit.getConsumerPerMinute},
-                  "max_updates_per_sale": ${ValidateLimit.getMaxUpdatesPerSale}, 
+                  "max_updates_per_sale": ${ValidateLimit.getMaxUpdatesPerSale},
                   "max_req_per_sec": ${ValidateLimit.getMaxReqPerSec}
                 }"""
               }
@@ -295,25 +295,25 @@ trait MarketplaceService extends HttpService with CORSSupport {
                 }
               }
           } ~
-        path("inventory_price") {
+          path("holding_cost_rate") {
           get {
             optionalHeaderValueByName(HttpHeaders.Authorization.name) { authorizationHeader =>
               complete {
                 DatabaseStore.getMerchantByToken(ValidateLimit.getTokenString(authorizationHeader).getOrElse(""))
                   .flatMap(merchant => {
-                    DatabaseStore.getInventoryPrice(merchant.merchant_id.get)
+                    DatabaseStore.getHoldingCostRate(merchant.merchant_id.get)
                   })
               }
             }
           } ~
           put {
-            entity(as[InventoryPrice]) { inventory_price =>
+            entity(as[HoldingCostRate]) { holdingCostRate =>
               complete {
-                inventory_price.merchant_id match {
+                holdingCostRate.merchant_id match {
                   case Some(id) =>
-                    DatabaseStore.changeInventoryPrice(inventory_price.price, id)
+                    DatabaseStore.changeHoldingCostRate(holdingCostRate.rate, id)
                   case None =>
-                    default_inventory_price = inventory_price.price
+                    defaultHoldingCostRate = holdingCostRate.rate
                     StatusCode.int2StatusCode(200) -> s"""{}"""
                 }
               }
