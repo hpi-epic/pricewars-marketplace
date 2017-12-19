@@ -19,9 +19,6 @@ object DatabaseStore {
   DBs.setupAll()
 
   def setup(): Unit = {
-    // Enable to reset database on every restart
-    // reset()
-
     DB localTx { implicit session =>
       sql"""CREATE EXTENSION IF NOT EXISTS pgcrypto;""".execute.apply()
       sql"""CREATE OR REPLACE FUNCTION random_string(length INTEGER)
@@ -48,6 +45,7 @@ object DatabaseStore {
         api_endpoint_url TEXT NOT NULL,
         merchant_name TEXT NOT NULL,
         algorithm_name TEXT NOT NULL,
+        holding_cost_rate NUMERIC(11,2) NOT NULL,
         register_timestamp timestamp not null default CURRENT_TIMESTAMP
       )""".execute.apply()
       sql"""CREATE TABLE IF NOT EXISTS consumers (
@@ -219,7 +217,7 @@ object DatabaseStore {
 
     var merchant: Option[Merchant] = None
     var merchant_id: String = ""
-    offerResult.flatMap(offer => DatabaseStore.getMerchant(offer.merchant_id.get, return_token = true)) match {
+    offerResult.flatMap(offer => DatabaseStore.getMerchant(offer.merchant_id.get)) match {
       case Success(merchantFound) => {
         merchant = Some(merchantFound)
         merchant_id = merchantFound.merchant_id.getOrElse("")
@@ -364,7 +362,8 @@ object DatabaseStore {
            token.value,
            ${merchant.api_endpoint_url},
            ${merchant.merchant_name},
-           ${merchant.algorithm_name}
+           ${merchant.algorithm_name},
+           $holdingCostRate
          FROM token_hash, token
          RETURNING merchant_id, merchant_token, api_endpoint_url, merchant_name, algorithm_name""".map(rs => Merchant(rs)).list.apply().headOption.get
     })
@@ -372,7 +371,7 @@ object DatabaseStore {
       case scala.util.Success(created_merchant) =>
         val timestamp = new DateTime()
         kafka_producer.send(KafkaProducerRecord("addMerchant", s"""{"merchant_id": "${created_merchant.merchant_id.get}", "api_endpoint_url": "${merchant.api_endpoint_url}", "merchant_name": "${merchant.merchant_name}", "algorithm_name": "${merchant.algorithm_name}", "http_code": 200, "timestamp": "$timestamp"}"""))
-        changeHoldingCostRate(holdingCostRate, created_merchant.merchant_id.get, timestamp)
+        logHoldingCostRate(holdingCostRate, created_merchant.merchant_id.get, timestamp)
         Success(merchant.copy(merchant_id = created_merchant.merchant_id, merchant_token = created_merchant.merchant_token))
       case scala.util.Failure(e) =>
         kafka_producer.send(KafkaProducerRecord("addMerchant", s"""{"api_endpoint_url": "${merchant.api_endpoint_url}", "merchant_name": "${merchant.merchant_name}", "algorithm_name": "${merchant.algorithm_name}", "http_code": 500, "timestamp": "${new DateTime()}"}"""))
@@ -470,55 +469,24 @@ object DatabaseStore {
     }
   }
 
-  def getMerchant(search_parameter: String, search_with_token: Boolean = false, return_token: Boolean = false): Result[Merchant] = {
+  def getMerchant(id: String): Result[Merchant] = {
     val res = Try(DB readOnly { implicit session =>
-      var sql_query = sql""
-      if (!search_with_token && !return_token) {
-        sql_query =
-          sql"""SELECT merchant_id, api_endpoint_url, merchant_name, algorithm_name, NULL AS merchant_token
-          FROM merchants
-          WHERE merchant_id = $search_parameter"""
-      } else if (!search_with_token && return_token) {
-        sql_query =
-          sql"""SELECT merchant_id, api_endpoint_url, merchant_name, algorithm_name, merchant_token
-          FROM merchants
-          WHERE merchant_id = $search_parameter"""
-      } else if (search_with_token && !return_token) {
-        sql_query =
-          sql"""SELECT merchant_id, api_endpoint_url, merchant_name, algorithm_name, NULL AS merchant_token
-          FROM merchants
-          WHERE merchant_token = $search_parameter"""
-      } else if (search_with_token && return_token) {
-        sql_query =
-          sql"""SELECT merchant_id, api_endpoint_url, merchant_name, algorithm_name, merchant_token
-          FROM merchants
-          WHERE merchant_token = $search_parameter"""
-      }
+      val sql_query =
+        sql"""SELECT merchant_id, api_endpoint_url, merchant_name, algorithm_name, NULL AS merchant_token
+        FROM merchants
+        WHERE merchant_id = $id"""
       sql_query.map(rs => Merchant(rs)).list.apply().headOption
     })
     res match {
-      case scala.util.Success(Some(v)) => {
+      case scala.util.Success(Some(v)) =>
         kafka_producer.send(KafkaProducerRecord("getMerchant", s"""{"merchant_id": "${v.merchant_id.get}", "http_code": 200, "timestamp": "${new DateTime()}"}"""))
         Success(v)
-      }
-      case scala.util.Success(None) => {
-        if (!search_with_token) {
-          kafka_producer.send(KafkaProducerRecord("getMerchant", s"""{"merchant_id": "$search_parameter", "http_code": 404, "timestamp": "${new DateTime()}"}"""))
-          Failure(s"No merchant with key $search_parameter found", 404)
-        } else {
-          kafka_producer.send(KafkaProducerRecord("getMerchant", s"""{"merchant_token": "$search_parameter", "http_code": 404, "timestamp": "${new DateTime()}"}"""))
-          Failure(s"No merchant with token $search_parameter found", 404)
-        }
-      }
-      case scala.util.Failure(e) => {
-        if (!search_with_token) {
-          kafka_producer.send(KafkaProducerRecord("getMerchant", s"""{"merchant_id": "$search_parameter", "http_code": 500, "timestamp": "${new DateTime()}"}"""))
-          Failure(e.getMessage, 500)
-        } else {
-          kafka_producer.send(KafkaProducerRecord("getMerchant", s"""{"merchant_token": "$search_parameter", "http_code": 500, "timestamp": "${new DateTime()}"}"""))
-          Failure(e.getMessage, 500)
-        }
-      }
+      case scala.util.Success(None) =>
+        kafka_producer.send(KafkaProducerRecord("getMerchant", s"""{"merchant_id": "$id", "http_code": 404, "timestamp": "${new DateTime()}"}"""))
+        Failure(s"No merchant with key $id found", 404)
+      case scala.util.Failure(e) =>
+        kafka_producer.send(KafkaProducerRecord("getMerchant", s"""{"merchant_id": "$id", "http_code": 500, "timestamp": "${new DateTime()}"}"""))
+        Failure(e.getMessage, 500)
     }
   }
 
@@ -773,7 +741,39 @@ object DatabaseStore {
     }
   }
 
-  def changeHoldingCostRate(rate: BigDecimal, merchant_id: String, timestamp: DateTime = new DateTime): Unit = {
+  def getHoldingCostRate(merchant_id: String): Result[BigDecimal] = {
+    val result = Try(DB localTx { implicit session =>
+      sql"""SELECT holding_cost_rate
+        FROM merchants
+        WHERE merchant_id = $merchant_id"""
+        .map(rs => rs.bigDecimal("holding_cost_rate")).list.apply().headOption.get
+    })
+    result match {
+      case scala.util.Success(rate) =>
+        Success(rate)
+      case scala.util.Failure(e) =>
+        Failure(e.getMessage, 500)
+    }
+  }
+
+  def changeHoldingCostRate(rate: BigDecimal, merchant_id: String): Result[Merchant] = {
+    val res = Try(DB localTx { implicit session =>
+      sql"""UPDATE merchants
+        SET holding_cost_rate = $rate
+        WHERE merchant_id = $merchant_id
+        RETURNING merchant_id, merchant_token, api_endpoint_url, merchant_name, algorithm_name"""
+        .map(rs => Merchant(rs)).list.apply().headOption.get
+    })
+    res match {
+      case scala.util.Success(merchant) =>
+        logHoldingCostRate(rate, merchant_id)
+        Success(merchant)
+      case scala.util.Failure(e) =>
+        Failure(e.getMessage, 500)
+    }
+  }
+
+  def logHoldingCostRate(rate: BigDecimal, merchant_id: String, timestamp: DateTime = new DateTime): Unit = {
     kafka_producer.send(KafkaProducerRecord("holding_cost_rate",
       s"""{"merchant_id": "$merchant_id", "rate": $rate, "timestamp": "$timestamp"}"""))
   }

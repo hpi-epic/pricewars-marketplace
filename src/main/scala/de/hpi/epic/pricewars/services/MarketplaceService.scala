@@ -295,17 +295,27 @@ trait MarketplaceService extends HttpService with CORSSupport {
                 }
               }
           } ~
-        path("holding_cost_rate") {
+          path("holding_cost_rate") {
+          get {
+            optionalHeaderValueByName(HttpHeaders.Authorization.name) { authorizationHeader =>
+              complete {
+                DatabaseStore.getMerchantByToken(ValidateLimit.getTokenString(authorizationHeader).getOrElse(""))
+                  .flatMap(merchant => {
+                    DatabaseStore.getHoldingCostRate(merchant.merchant_id.get)
+                  })
+              }
+            }
+          } ~
           put {
             entity(as[HoldingCostRate]) { holdingCostRate =>
-              holdingCostRate.merchant_id match {
-                case Some(id) =>
-                  DatabaseStore.changeHoldingCostRate(holdingCostRate.rate, id)
-                case None =>
-                  defaultHoldingCostRate = holdingCostRate.rate
-              }
               complete {
-                StatusCode.int2StatusCode(200) -> s"""{}"""
+                holdingCostRate.merchant_id match {
+                  case Some(id) =>
+                    DatabaseStore.changeHoldingCostRate(holdingCostRate.rate, id)
+                  case None =>
+                    defaultHoldingCostRate = holdingCostRate.rate
+                    StatusCode.int2StatusCode(200) -> s"""{}"""
+                }
               }
             }
           }
