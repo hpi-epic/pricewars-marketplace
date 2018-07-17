@@ -21,6 +21,14 @@ object ValidateLimit {
   private val max_req_per_sec = Var(0.5)
   private val timeToLiveRedisKey = Rx { (tick() * precisionFactor).asInstanceOf[Long] }
   private val limit = Rx { max_req_per_sec() * precisionFactor }
+  /* 
+    Short description of validation checking: we assume $tick-long ticks (in seconds, defaults to 1s ticks).
+    Our goal is fine-granular request limits (e.g., per second), but still allowing rather "slow settings"
+    (e.g., allowing 20 requests per minute). To accurately tracking such request limits <1/s,
+    we multiply both the time-to-live for Redis as well as the given limit (accessible via the `/config` route)
+    with $precisionFactor (defaults to 100). Thus, with the default settings and a request limit of 0.5 requests/s,
+    we check whether we have seen more than 50 requests (0.5 * 100) with a time-to-live of 100s (1.0s * 100).
+  */
 
   def getTick: Double = {
     tick.now
