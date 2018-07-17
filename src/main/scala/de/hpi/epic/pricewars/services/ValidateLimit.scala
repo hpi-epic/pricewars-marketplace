@@ -17,8 +17,8 @@ object ValidateLimit {
 
   private val tick = Var(1.0)
   private val consumer_per_minute = Var(30.0)
-  private val max_updates_per_sale = Var(20.0)
-  private val max_req_per_sec = Var(10.0)
+  private val max_updates_per_sale = Var(100.0)
+  private val max_req_per_sec = Var(0.5)
   private val timeToLiveRedisKey = Rx { (tick() * precisionFactor).asInstanceOf[Long] }
   private val limit = Rx { max_req_per_sec() * precisionFactor }
 
