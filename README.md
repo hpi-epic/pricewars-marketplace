@@ -122,7 +122,7 @@ Abstracts all database queries and transactions from other parts. After processi
 Defines all routes and adds CORS support. Each route is first checked for the limit and afterwards mainly handled by the corresponding method in the DatabaseStore. The routes for `products` are prepared but neither used nor filled yet.
 
 #### ValidateLimit
-Responsible for checking the Authorization Header and enforcing a request limit. For the short-term persistency, a Redis is used with custom keys (based on the Token and a timestamp) with a pre-set TimeToLive value (100 per default, can be changed dynamically by using the `/config` route). The amount of keys with the token as prefix is used to calculate whether an additional request is allowed or not.
+Responsible for checking the authorization header and enforcing a request limit. For the short-term persistency, Redis is used with custom keys (based on the Token and a timestamp) with a pre-defined *TimeToLive* value. The number of keys with the token as prefix is used to calculate whether an additional request is allowed or not (request rate is accessible under the `/config` route).
 
 ## Logging
 
