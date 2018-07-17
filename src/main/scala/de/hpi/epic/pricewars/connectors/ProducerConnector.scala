@@ -65,7 +65,7 @@ object ProducerConnector {
     val producer_infos = encrypted_signature.split(" ")
 
     try {
-      if (producer_infos{0}.toLong == uid && producer_infos{1}.toInt == amount && producer_infos{2} == merchant_id) {
+      if (producer_infos{0}.toLong == uid && producer_infos{2} == merchant_id) {
         val totalAmountUsed = DatabaseStore.getUsedAmountForSignature(signature) + amount
 
         if (totalAmountUsed <= producer_infos{1}.toInt) {
