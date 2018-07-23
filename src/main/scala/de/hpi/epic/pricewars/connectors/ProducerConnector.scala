@@ -19,6 +19,8 @@ import spray.json._
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
+import de.hpi.epic.pricewars.data.Signature
+
 object ProducerConnector {
   val config: Config = ConfigFactory.load
 
@@ -45,40 +47,35 @@ object ProducerConnector {
     }
   }
 
-  def validSignature(uid: Long, amount: Int, signature: String, merchant_id: String): Boolean = {
+  def parseSignature(encrypted_signature: String): Option[Signature] = {
     // A valid signature consists of: <product_uid> <amount> <merchant_id> <timestamp>
     if (producer_key.isEmpty) {
       producer_key = getProducerKey()
     }
 
-    if (signature.length == 0 || producer_key.isEmpty) {
-      return false
+    if (encrypted_signature.length == 0 || producer_key.isEmpty) {
+      return None
     }
 
-    val signature_bytes = Base64.decodeBase64(signature)
+    val signature_bytes = Base64.decodeBase64(encrypted_signature)
     val decryption_key_bytes = Base64.decodeBase64(producer_key.get)
     val cipher: Cipher = Cipher.getInstance("AES/ECB/NoPadding")
     cipher.init(Cipher.DECRYPT_MODE, new SecretKeySpec(decryption_key_bytes, "AES"))
-    val encrypted_signature = new String(cipher.doFinal(signature_bytes)).trim
-    val signature_content = encrypted_signature.split(" ")
+    val decrypted_signature = new String(cipher.doFinal(signature_bytes)).trim
+    val signature_content = decrypted_signature.split(" ")
 
     if (signature_content.length != 4) {
-      println("Signature invalid format")
-      return false
+      return None
     }
 
     try {
-      if (signature_content{0}.toLong == uid && signature_content{1}.toInt <= amount && signature_content{2} == merchant_id) {
-        true
-      } else {
-        false
-      }
+      return Some(Signature(signature_content{0}.toLong, signature_content{1}.toInt, signature_content{2}))
     } catch {
       case e: java.lang.NumberFormatException => {
         println("Signature invalid format")
         println(e)
-        false
       }
     }
+    None
   }
 }

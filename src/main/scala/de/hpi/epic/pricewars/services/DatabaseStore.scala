@@ -94,14 +94,13 @@ object DatabaseStore {
   }
 
   def addOffer(offer: Offer, merchant: Merchant): Result[Offer] = {
-    if (!ProducerConnector.validSignature(offer.uid, offer.amount, offer.signature.getOrElse(""), merchant.merchant_id.getOrElse(""))) {
+    val signature = ProducerConnector.parseSignature(offer.signature.getOrElse(""))
+    if (signature.isEmpty || !signature.get.isValid(offer.uid, offer.amount, merchant.merchant_id.getOrElse(""))) {
       kafka_producer.send(KafkaProducerRecord("addOffer", s"""{"uid": ${offer.uid}, "product_id": ${offer.product_id}, "quality": ${offer.quality}, "merchant_id": "${merchant.merchant_id.get}", "amount": ${offer.amount}, "price": ${offer.price}, "shipping_time_standard": ${offer.shipping_time.standard}, "shipping_time_prime": ${offer.shipping_time.prime.getOrElse(0)}, "prime": ${offer.prime}, "signature": "${offer.signature.getOrElse("")}", "http_code": 451, "timestamp": "${new DateTime()}"}"""))
       return Failure("Invalid signature", 451)
     }
 
-    //todo: get max_amount from signature
-    val max_amount = 10
-    if (!DatabaseStore.increaseUsedAmountForSignature(offer.signature.getOrElse(""), offer.amount, max_amount)) {
+    if (!DatabaseStore.increaseUsedAmountForSignature(offer.signature.getOrElse(""), offer.amount, signature.get.max_amount)) {
       kafka_producer.send(KafkaProducerRecord("addOffer", s"""{"uid": ${offer.uid}, "product_id": ${offer.product_id}, "quality": ${offer.quality}, "merchant_id": "${merchant.merchant_id.get}", "amount": ${offer.amount}, "price": ${offer.price}, "shipping_time_standard": ${offer.shipping_time.standard}, "shipping_time_prime": ${offer.shipping_time.prime.getOrElse(0)}, "prime": ${offer.prime}, "signature": "${offer.signature.getOrElse("")}", "http_code": 451, "timestamp": "${new DateTime()}"}"""))
       return Failure("Product amount exceeds allowed amount", 451)
     }
@@ -145,7 +144,6 @@ object DatabaseStore {
           }) -> f.code
       }
     }
-
   }
 
   def deleteOffer(offer_id: Long, merchant: Merchant): Result[Unit] = {
@@ -284,7 +282,7 @@ object DatabaseStore {
     }
   }
 
-  def restockOffer(offer_id: Long, amount: Int, signature: String, merchant: Merchant): Result[Offer] = {
+  def restockOffer(offer_id: Long, amount: Int, encrypted_signature: String, merchant: Merchant): Result[Offer] = {
     var offerOption: Option[Offer] = None
     DatabaseStore.getOffer(offer_id) match {
       case Success(offerFound) => {
@@ -293,14 +291,13 @@ object DatabaseStore {
     }
     val offer = offerOption.get
 
-    if (!ProducerConnector.validSignature(offer.uid, amount, signature, merchant.merchant_id.getOrElse(""))) {
-      kafka_producer.send(KafkaProducerRecord("restockOffer", s"""{"offer_id": $offer_id, "amount": $amount, "signature": "$signature", "merchant_id": "${merchant.merchant_id.get}", "http_code": 451, "timestamp": "${new DateTime()}"}"""))
+    val signature = ProducerConnector.parseSignature(encrypted_signature)
+    if (signature.isEmpty || !signature.get.isValid(offer.uid, amount, merchant.merchant_id.getOrElse(""))) {
+      kafka_producer.send(KafkaProducerRecord("addOffer", s"""{"uid": ${offer.uid}, "product_id": ${offer.product_id}, "quality": ${offer.quality}, "merchant_id": "${merchant.merchant_id.get}", "amount": ${offer.amount}, "price": ${offer.price}, "shipping_time_standard": ${offer.shipping_time.standard}, "shipping_time_prime": ${offer.shipping_time.prime.getOrElse(0)}, "prime": ${offer.prime}, "signature": "${offer.signature.getOrElse("")}", "http_code": 451, "timestamp": "${new DateTime()}"}"""))
       return Failure("Invalid signature", 451)
     }
 
-    // todo: get correct max_amount from signature
-    val max_amount = 10
-    if (!DatabaseStore.increaseUsedAmountForSignature(signature, amount, max_amount)) {
+    if (!DatabaseStore.increaseUsedAmountForSignature(encrypted_signature, amount, signature.get.max_amount)) {
       kafka_producer.send(KafkaProducerRecord("restockOffer", s"""{"offer_id": $offer_id, "amount": $amount, "signature": "$signature", "merchant_id": "${merchant.merchant_id.get}", "http_code": 451, "timestamp": "${new DateTime()}"}"""))
       return Failure("Product amount exceeds allowed amount", 451)
     }
@@ -728,9 +725,9 @@ object DatabaseStore {
     }
   }
 
-  def increaseUsedAmountForSignature(signature: String, amount: Int, max_amount: Int): Boolean = {
+  def increaseUsedAmountForSignature(encrypted_signature: String, amount: Int, max_amount: Int): Boolean = {
     val res = Try(DB localTx { implicit session =>
-      sql"""INSERT INTO used_signatures VALUES ($signature, $max_amount, $amount)
+      sql"""INSERT INTO used_signatures VALUES ($encrypted_signature, $max_amount, $amount)
             ON CONFLICT (signature) DO UPDATE SET used_amount = used_signatures.used_amount + $amount"""
         .executeUpdate().apply()
     })
