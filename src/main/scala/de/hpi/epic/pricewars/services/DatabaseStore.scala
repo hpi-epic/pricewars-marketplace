@@ -74,7 +74,8 @@ object DatabaseStore {
       )""".execute.apply()
       sql"""CREATE TABLE IF NOT EXISTS used_signatures (
         signature TEXT NOT NULL UNIQUE PRIMARY KEY,
-        used_amount INTEGER NOT NULL CHECK (used_amount >= 0)
+        max_amount INTEGER NOT NULL,
+        used_amount INTEGER NOT NULL CHECK (used_amount >= 0 AND used_amount <= max_amount)
       )""".execute.apply()
     }
   }
@@ -715,7 +716,6 @@ object DatabaseStore {
   }
 
   def decreaseUsedAmountForSignature(signature: String, amount: Int): Boolean = {
-    // todo: need check for < 0 here?
     val res = Try(DB localTx { implicit session =>
       sql"""UPDATE used_signatures
             SET used_amount = used_amount - $amount
@@ -729,9 +729,8 @@ object DatabaseStore {
   }
 
   def increaseUsedAmountForSignature(signature: String, amount: Int, max_amount: Int): Boolean = {
-    //todo: add condition for max_amount
     val res = Try(DB localTx { implicit session =>
-      sql"""INSERT INTO used_signatures VALUES ($signature, $amount)
+      sql"""INSERT INTO used_signatures VALUES ($signature, $max_amount, $amount)
             ON CONFLICT (signature) DO UPDATE SET used_amount = used_signatures.used_amount + $amount"""
         .executeUpdate().apply()
     })
