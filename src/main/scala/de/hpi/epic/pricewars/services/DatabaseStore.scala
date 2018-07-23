@@ -4,8 +4,7 @@ import cakesolutions.kafka.KafkaProducer.Conf
 import cakesolutions.kafka.{KafkaProducer, KafkaProducerRecord}
 import com.typesafe.config.{Config, ConfigFactory}
 import de.hpi.epic.pricewars.connectors.{MerchantConnector, ProducerConnector}
-import de.hpi.epic.pricewars.data
-import de.hpi.epic.pricewars.data.{Consumer, Merchant, Offer, Product}
+import de.hpi.epic.pricewars.data._
 import de.hpi.epic.pricewars.utils.{Failure, Result, Success}
 import org.apache.kafka.common.serialization.StringSerializer
 import org.joda.time.DateTime
@@ -146,11 +145,26 @@ object DatabaseStore {
     }
   }
 
-  def deleteOffer(offer_id: Long, merchant: Merchant): Result[Unit] = {
-    // we get no information about signature here
-    //decreaseUsedAmountForSignature(signature, amount: Int)
+  def deleteOffer(offer_id: Long, merchant: Merchant, encrypted_signature: EncryptedSignature): Result[Unit] = {
+    val offerResult = DatabaseStore.getOffer(offer_id)
+
+    var offer: Option[Offer] = None
+    offerResult match {
+      case Success(offerFound) => offer = Some(offerFound)
+    }
+
+    val signature = ProducerConnector.parseSignature(encrypted_signature.signature)
+    if (signature.isEmpty || !signature.get.isValid(offer.get.uid, 0, merchant.merchant_id.getOrElse(""))) {
+      kafka_producer.send(KafkaProducerRecord("deleteOffer", s"""{"offer_id": $offer_id, "merchant_id": "${merchant.merchant_id.get}", "http_code": 500, "timestamp": "${new DateTime()}"}"""))
+      return Failure("Invalid signature", 451)
+    }
 
     val res = Try(DB localTx { implicit session =>
+      // Decrease used_amount by the remaining amount in the offer. But don't more than used_amount.
+      sql"""UPDATE used_signatures
+            SET used_amount = used_amount - LEAST(used_amount, (SELECT amount FROM offers WHERE offer_id = $offer_id))
+            WHERE signature = ${encrypted_signature.signature}"""
+        .executeUpdate().apply()
       sql"DELETE FROM offers WHERE offer_id = $offer_id AND merchant_id = ${merchant.merchant_id.get}".executeUpdate().apply()
     })
     res match {
@@ -293,12 +307,12 @@ object DatabaseStore {
 
     val signature = ProducerConnector.parseSignature(encrypted_signature)
     if (signature.isEmpty || !signature.get.isValid(offer.uid, amount, merchant.merchant_id.getOrElse(""))) {
-      kafka_producer.send(KafkaProducerRecord("addOffer", s"""{"uid": ${offer.uid}, "product_id": ${offer.product_id}, "quality": ${offer.quality}, "merchant_id": "${merchant.merchant_id.get}", "amount": ${offer.amount}, "price": ${offer.price}, "shipping_time_standard": ${offer.shipping_time.standard}, "shipping_time_prime": ${offer.shipping_time.prime.getOrElse(0)}, "prime": ${offer.prime}, "signature": "${offer.signature.getOrElse("")}", "http_code": 451, "timestamp": "${new DateTime()}"}"""))
+      kafka_producer.send(KafkaProducerRecord("restockOffer", s"""{"offer_id": $offer_id, "amount": $amount, "signature": "$encrypted_signature", "merchant_id": "${merchant.merchant_id.get}", "http_code": 451, "timestamp": "${new DateTime()}"}"""))
       return Failure("Invalid signature", 451)
     }
 
     if (!DatabaseStore.increaseUsedAmountForSignature(encrypted_signature, amount, signature.get.max_amount)) {
-      kafka_producer.send(KafkaProducerRecord("restockOffer", s"""{"offer_id": $offer_id, "amount": $amount, "signature": "$signature", "merchant_id": "${merchant.merchant_id.get}", "http_code": 451, "timestamp": "${new DateTime()}"}"""))
+      kafka_producer.send(KafkaProducerRecord("restockOffer", s"""{"offer_id": $offer_id, "amount": $amount, "signature": "$encrypted_signature", "merchant_id": "${merchant.merchant_id.get}", "http_code": 451, "timestamp": "${new DateTime()}"}"""))
       return Failure("Product amount exceeds allowed amount", 451)
     }
 
@@ -313,15 +327,15 @@ object DatabaseStore {
     }
     res match {
       case scala.util.Success(Some(v)) => {
-        kafka_producer.send(KafkaProducerRecord("restockOffer", s"""{"offer_id": $offer_id, "amount": $amount, "signature": "$signature", "merchant_id": "${merchant.merchant_id.get}", "http_code": 200, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("restockOffer", s"""{"offer_id": $offer_id, "amount": $amount, "signature": "$encrypted_signature", "merchant_id": "${merchant.merchant_id.get}", "http_code": 200, "timestamp": "${new DateTime()}"}"""))
         Success(v)
       }
       case scala.util.Success(None) => {
-        kafka_producer.send(KafkaProducerRecord("restockOffer", s"""{"offer_id": $offer_id, "amount": $amount, "signature": "$signature", "merchant_id": "${merchant.merchant_id.get}", "http_code": 404, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("restockOffer", s"""{"offer_id": $offer_id, "amount": $amount, "signature": "$encrypted_signature", "merchant_id": "${merchant.merchant_id.get}", "http_code": 404, "timestamp": "${new DateTime()}"}"""))
         Failure("item not found", 404)
       }
       case scala.util.Failure(e) => {
-        kafka_producer.send(KafkaProducerRecord("restockOffer", s"""{"offer_id": $offer_id, "amount": $amount, "signature": "$signature", "merchant_id": "${merchant.merchant_id.get}", "http_code": 417, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("restockOffer", s"""{"offer_id": $offer_id, "amount": $amount, "signature": "$encrypted_signature", "merchant_id": "${merchant.merchant_id.get}", "http_code": 417, "timestamp": "${new DateTime()}"}"""))
         Failure(e.getMessage, 417)
       }
     }
@@ -635,7 +649,7 @@ object DatabaseStore {
     }
   }
 
-  def addProduct(product: data.Product): Result[data.Product] = {
+  def addProduct(product: Product): Result[Product] = {
     val res = Try(DB localTx { implicit session =>
       sql"INSERT INTO products VALUES (DEFAULT, ${product.name}, ${product.genre})"
         .updateAndReturnGeneratedKey.apply()
@@ -672,7 +686,7 @@ object DatabaseStore {
     }
   }
 
-  def getProducts: Result[Seq[data.Product]] = {
+  def getProducts: Result[Seq[Product]] = {
     val res = Try(DB readOnly { implicit session =>
       sql"SELECT product_id, name, genre FROM products"
         .map(rs => Product(rs)).list.apply()
@@ -689,7 +703,7 @@ object DatabaseStore {
     }
   }
 
-  def getProduct(product_id: Long): Result[data.Product] = {
+  def getProduct(product_id: Long): Result[Product] = {
     val res = Try(DB readOnly { implicit session =>
       sql"""SELECT product_id, name, genre
         FROM products
@@ -709,19 +723,6 @@ object DatabaseStore {
         kafka_producer.send(KafkaProducerRecord("getProduct", s"""{"product_id": $product_id, "http_code": 500, "timestamp": "${new DateTime()}"}"""))
         Failure(e.getMessage, 500)
       }
-    }
-  }
-
-  def decreaseUsedAmountForSignature(signature: String, amount: Int): Boolean = {
-    val res = Try(DB localTx { implicit session =>
-      sql"""UPDATE used_signatures
-            SET used_amount = used_amount - $amount
-            WHERE signature = $signature"""
-        .executeUpdate().apply()
-    })
-    res match {
-      case scala.util.Success(v) if v == 1 => true
-      case _ => false
     }
   }
 

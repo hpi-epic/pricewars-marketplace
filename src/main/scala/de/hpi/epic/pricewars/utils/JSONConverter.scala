@@ -14,5 +14,6 @@ object JSONConverter extends DefaultJsonProtocol with SprayJsonSupport {
   implicit val buyRequestFormat = jsonFormat3(BuyRequest)
   implicit val settingsFormat = jsonFormat3(Settings)
   implicit val holdingCostRateFormat: RootJsonFormat[HoldingCostRate] = jsonFormat2(HoldingCostRate)
+  implicit val encryptedSignatureFormat = jsonFormat1(EncryptedSignature)
   implicit def failureFormat[A :JsonFormat] = jsonFormat2(Failure.apply[A])
 }

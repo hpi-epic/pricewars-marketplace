@@ -82,11 +82,12 @@ trait MarketplaceService extends HttpService with CORSSupport {
             } ~
               delete {
                 optionalHeaderValueByName(HttpHeaders.Authorization.name) { authorizationHeader =>
-                  complete {
-                    ValidateLimit
-                      .checkMerchant(authorizationHeader)
-                      .flatMap(merchant => DatabaseStore.deleteOffer(id, merchant))
-                      .successHttpCode(StatusCodes.NoContent)
+                  entity(as[EncryptedSignature]) { signature =>
+                    complete {
+                      ValidateLimit
+                        .checkMerchant(authorizationHeader)
+                        .flatMap(merchant => DatabaseStore.deleteOffer(id, merchant, signature))
+                    }
                   }
                 }
               } ~
