@@ -19,12 +19,13 @@ import spray.json._
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
+import de.hpi.epic.pricewars.data.Signature
+
 object ProducerConnector {
   val config: Config = ConfigFactory.load
 
   val producer_url: String = config.getString("producer_url")
   var producer_key: Option[String] = None
-  var producer_key_updated = new DateTime()
 
   implicit val system: ActorSystem = ActorSystem()
   implicit val timeout: Timeout = Timeout(15.seconds)
@@ -46,48 +47,35 @@ object ProducerConnector {
     }
   }
 
-  def validSignature(uid: Long, amount: Int, signature: String, merchant_id: String): Boolean = {
-    // "<product_uid> <amount> <merchant_id> <timestamp>"
+  def parseSignature(encrypted_signature: String): Option[Signature] = {
+    // A valid signature consists of: <product_uid> <amount> <merchant_id> <timestamp>
     if (producer_key.isEmpty) {
       producer_key = getProducerKey()
-      producer_key_updated = new DateTime()
     }
 
-    if (signature.length == 0 || producer_key.isEmpty) {
-      return false
+    if (encrypted_signature.length == 0 || producer_key.isEmpty) {
+      return None
     }
 
-    val signature_bytes = Base64.decodeBase64(signature)
+    val signature_bytes = Base64.decodeBase64(encrypted_signature)
     val decryption_key_bytes = Base64.decodeBase64(producer_key.get)
     val cipher: Cipher = Cipher.getInstance("AES/ECB/NoPadding")
     cipher.init(Cipher.DECRYPT_MODE, new SecretKeySpec(decryption_key_bytes, "AES"))
-    val encrypted_signature = new String(cipher.doFinal(signature_bytes)).trim
-    val producer_infos = encrypted_signature.split(" ")
+    val decrypted_signature = new String(cipher.doFinal(signature_bytes)).trim
+    val signature_content = decrypted_signature.split(" ")
+
+    if (signature_content.length != 4) {
+      return None
+    }
 
     try {
-      if (producer_infos{0}.toLong == uid && producer_infos{1}.toInt == amount && producer_infos{2} == merchant_id) {
-        val totalAmountUsed = DatabaseStore.getUsedAmountForSignature(signature) + amount
-
-        if (totalAmountUsed <= producer_infos{1}.toInt) {
-          DatabaseStore.setUsedAmountForSignature(signature, totalAmountUsed)
-        } else {
-          false
-        }
-      } else {
-        false
-      }
+      return Some(Signature(signature_content{0}.toLong, signature_content{1}.toInt, signature_content{2}))
     } catch {
-      case e: Exception => {
-        if (Minutes.minutesBetween(producer_key_updated, new DateTime()).getMinutes > 15) {
-          println("Signature invalid, updating key!")
-          producer_key = None
-          validSignature(uid, amount, signature, merchant_id)
-        } else {
-          println("Signature invalid, last update less than 15 minutes ago!")
-          println(e)
-          false
-        }
+      case e: java.lang.NumberFormatException => {
+        println("Signature invalid format")
+        println(e)
       }
     }
+    None
   }
 }
