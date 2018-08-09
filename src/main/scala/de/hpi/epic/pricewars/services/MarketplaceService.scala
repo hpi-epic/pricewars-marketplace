@@ -111,8 +111,8 @@ trait MarketplaceService extends HttpService with CORSSupport {
                 entity(as[BuyRequest]) { buyRequest =>
                   detach() {
                     complete {
-                      ValidateLimit
-                        .checkConsumer(authorizationHeader)
+                      val token = ValidateLimit.getTokenString(authorizationHeader)
+                      DatabaseStore.getConsumerByToken(token.getOrElse(""))
                         .flatMap(consumer => DatabaseStore.buyOffer(id, buyRequest.price, buyRequest.amount, consumer))
                         .successHttpCode(StatusCodes.NoContent)
                     }
