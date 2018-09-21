@@ -1,5 +1,8 @@
 package de.hpi.epic.pricewars.services
 
+import java.time.format.DateTimeFormatter
+import java.time.ZonedDateTime
+
 import cakesolutions.kafka.KafkaProducer.Conf
 import cakesolutions.kafka.{KafkaProducer, KafkaProducerRecord}
 import com.typesafe.config.{Config, ConfigFactory}
@@ -7,7 +10,7 @@ import de.hpi.epic.pricewars.connectors.{MerchantConnector, ProducerConnector}
 import de.hpi.epic.pricewars.data._
 import de.hpi.epic.pricewars.utils.{Failure, Result, Success}
 import org.apache.kafka.common.serialization.StringSerializer
-import org.joda.time.DateTime
+
 import scalikejdbc._
 import scalikejdbc.config._
 import spray.http.{StatusCode, StatusCodes}
@@ -16,6 +19,7 @@ import scala.util.Try
 
 object DatabaseStore {
   DBs.setupAll()
+  val dateFormatter: DateTimeFormatter = DateTimeFormatter.ISO_INSTANT
 
   def setup(): Unit = {
     DB localTx { implicit session =>
@@ -95,12 +99,12 @@ object DatabaseStore {
   def addOffer(offer: Offer, merchant: Merchant): Result[Offer] = {
     val signature = ProducerConnector.parseSignature(offer.signature.getOrElse(""))
     if (signature.isEmpty || !signature.get.isValid(offer.uid, offer.amount, merchant.merchant_id.getOrElse(""))) {
-      kafka_producer.send(KafkaProducerRecord("addOffer", s"""{"uid": ${offer.uid}, "product_id": ${offer.product_id}, "quality": ${offer.quality}, "merchant_id": "${merchant.merchant_id.get}", "amount": ${offer.amount}, "price": ${offer.price}, "shipping_time_standard": ${offer.shipping_time.standard}, "shipping_time_prime": ${offer.shipping_time.prime.getOrElse(0)}, "prime": ${offer.prime}, "signature": "${offer.signature.getOrElse("")}", "http_code": 451, "timestamp": "${new DateTime()}"}"""))
+      kafka_producer.send(KafkaProducerRecord("addOffer", s"""{"uid": ${offer.uid}, "product_id": ${offer.product_id}, "quality": ${offer.quality}, "merchant_id": "${merchant.merchant_id.get}", "amount": ${offer.amount}, "price": ${offer.price}, "shipping_time_standard": ${offer.shipping_time.standard}, "shipping_time_prime": ${offer.shipping_time.prime.getOrElse(0)}, "prime": ${offer.prime}, "signature": "${offer.signature.getOrElse("")}", "http_code": 451, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
       return Failure("Invalid signature", 451)
     }
 
     if (!DatabaseStore.increaseUsedAmountForSignature(offer.signature.getOrElse(""), offer.amount, signature.get.max_amount)) {
-      kafka_producer.send(KafkaProducerRecord("addOffer", s"""{"uid": ${offer.uid}, "product_id": ${offer.product_id}, "quality": ${offer.quality}, "merchant_id": "${merchant.merchant_id.get}", "amount": ${offer.amount}, "price": ${offer.price}, "shipping_time_standard": ${offer.shipping_time.standard}, "shipping_time_prime": ${offer.shipping_time.prime.getOrElse(0)}, "prime": ${offer.prime}, "signature": "${offer.signature.getOrElse("")}", "http_code": 451, "timestamp": "${new DateTime()}"}"""))
+      kafka_producer.send(KafkaProducerRecord("addOffer", s"""{"uid": ${offer.uid}, "product_id": ${offer.product_id}, "quality": ${offer.quality}, "merchant_id": "${merchant.merchant_id.get}", "amount": ${offer.amount}, "price": ${offer.price}, "shipping_time_standard": ${offer.shipping_time.standard}, "shipping_time_prime": ${offer.shipping_time.prime.getOrElse(0)}, "prime": ${offer.prime}, "signature": "${offer.signature.getOrElse("")}", "http_code": 451, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
       return Failure("Product amount exceeds allowed amount", 451)
     }
 
@@ -120,12 +124,12 @@ object DatabaseStore {
     })
     res match {
       case scala.util.Success(id) => {
-        kafka_producer.send(KafkaProducerRecord("addOffer", s"""{"offer_id": $id, "uid": ${offer.uid}, "product_id": ${offer.product_id}, "quality": ${offer.quality}, "merchant_id": "${merchant.merchant_id.get}", "amount": ${offer.amount}, "price": ${offer.price}, "shipping_time_standard": ${offer.shipping_time.standard}, "shipping_time_prime": ${offer.shipping_time.prime.getOrElse(0)}, "prime": ${offer.prime}, "signature": "${offer.signature.getOrElse("")}", "http_code": 200, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("addOffer", s"""{"offer_id": $id, "uid": ${offer.uid}, "product_id": ${offer.product_id}, "quality": ${offer.quality}, "merchant_id": "${merchant.merchant_id.get}", "amount": ${offer.amount}, "price": ${offer.price}, "shipping_time_standard": ${offer.shipping_time.standard}, "shipping_time_prime": ${offer.shipping_time.prime.getOrElse(0)}, "prime": ${offer.prime}, "signature": "${offer.signature.getOrElse("")}", "http_code": 200, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
         logCurrentMarketSituation(offer.product_id, "addOffer", merchant.merchant_id.get)
         Success(offer.copy(offer_id = Some(id), signature = None, merchant_id = Some(merchant.merchant_id.get)))
       }
       case scala.util.Failure(e) => {
-        kafka_producer.send(KafkaProducerRecord("addOffer", s"""{"uid": ${offer.uid}, "product_id": ${offer.product_id}, "quality": ${offer.quality}, "merchant_id": "${merchant.merchant_id.get}", "amount": ${offer.amount}, "price": ${offer.price}, "shipping_time_standard": ${offer.shipping_time.standard}, "shipping_time_prime": ${offer.shipping_time.prime.getOrElse(0)}, "prime": ${offer.prime}, "signature": "${offer.signature.getOrElse("")}", "http_code": 500, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("addOffer", s"""{"uid": ${offer.uid}, "product_id": ${offer.product_id}, "quality": ${offer.quality}, "merchant_id": "${merchant.merchant_id.get}", "amount": ${offer.amount}, "price": ${offer.price}, "shipping_time_standard": ${offer.shipping_time.standard}, "shipping_time_prime": ${offer.shipping_time.prime.getOrElse(0)}, "prime": ${offer.prime}, "signature": "${offer.signature.getOrElse("")}", "http_code": 500, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
         Failure(e.getMessage, 500)
       }
     }
@@ -155,7 +159,7 @@ object DatabaseStore {
 
     val signature = ProducerConnector.parseSignature(encrypted_signature.signature)
     if (signature.isEmpty || !signature.get.isValid(offer.get.uid, 0, merchant.merchant_id.getOrElse(""))) {
-      kafka_producer.send(KafkaProducerRecord("deleteOffer", s"""{"offer_id": $offer_id, "merchant_id": "${merchant.merchant_id.get}", "http_code": 500, "timestamp": "${new DateTime()}"}"""))
+      kafka_producer.send(KafkaProducerRecord("deleteOffer", s"""{"offer_id": $offer_id, "merchant_id": "${merchant.merchant_id.get}", "http_code": 500, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
       return Failure("Invalid signature", 451)
     }
 
@@ -169,15 +173,15 @@ object DatabaseStore {
     })
     res match {
       case scala.util.Success(v) if v == 1 => {
-        kafka_producer.send(KafkaProducerRecord("deleteOffer", s"""{"offer_id": $offer_id, "merchant_id": "${merchant.merchant_id.get}", "http_code": 200, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("deleteOffer", s"""{"offer_id": $offer_id, "merchant_id": "${merchant.merchant_id.get}", "http_code": 200, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
         Success((): Unit)
       }
       case scala.util.Success(v) if v != 1 => {
-        kafka_producer.send(KafkaProducerRecord("deleteOffer", s"""{"offer_id": $offer_id, "merchant_id": "${merchant.merchant_id.get}", "http_code": 404, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("deleteOffer", s"""{"offer_id": $offer_id, "merchant_id": "${merchant.merchant_id.get}", "http_code": 404, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
         Failure(s"No product with id $offer_id", 404)
       }
       case scala.util.Failure(e) => {
-        kafka_producer.send(KafkaProducerRecord("deleteOffer", s"""{"offer_id": $offer_id, "merchant_id": "${merchant.merchant_id.get}", "http_code": 500, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("deleteOffer", s"""{"offer_id": $offer_id, "merchant_id": "${merchant.merchant_id.get}", "http_code": 500, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
         Failure(e.getMessage, 500)
       }
     }
@@ -195,11 +199,11 @@ object DatabaseStore {
     })
     res match {
       case scala.util.Success(v) => {
-        kafka_producer.send(KafkaProducerRecord("getOffers", s"""{"product_id": ${product_id.getOrElse("")}, "http_code": 200, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("getOffers", s"""{"product_id": ${product_id.getOrElse("")}, "http_code": 200, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
         Success(v)
       }
       case scala.util.Failure(e) => {
-        kafka_producer.send(KafkaProducerRecord("getOffers", s"""{"product_id": ${product_id.getOrElse("")}, "http_code": 500, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("getOffers", s"""{"product_id": ${product_id.getOrElse("")}, "http_code": 500, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
         Failure(e.getMessage, 500)
       }
     }
@@ -214,15 +218,15 @@ object DatabaseStore {
     })
     res match {
       case scala.util.Success(Some(v)) => {
-        kafka_producer.send(KafkaProducerRecord("getOffer", s"""{"offer_id": $offer_id, "http_code": 200, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("getOffer", s"""{"offer_id": $offer_id, "http_code": 200, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
         Success(v)
       }
       case scala.util.Success(None) => {
-        kafka_producer.send(KafkaProducerRecord("getOffer", s"""{"offer_id": $offer_id, "http_code": 404, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("getOffer", s"""{"offer_id": $offer_id, "http_code": 404, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
         Failure(s"No object with key $offer_id found", 404)
       }
       case scala.util.Failure(e) => {
-        kafka_producer.send(KafkaProducerRecord("getOffer", s"""{"offer_id": $offer_id, "http_code": 500, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("getOffer", s"""{"offer_id": $offer_id, "http_code": 500, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
         Failure(e.getMessage, 500)
       }
     }
@@ -249,16 +253,16 @@ object DatabaseStore {
     })
     res match {
       case scala.util.Success(remaining_offer) if remaining_offer.isDefined => {
-        kafka_producer.send(KafkaProducerRecord("buyOffer", s"""{"offer_id": $offer_id, "uid": ${offer.get.uid}, "product_id": ${offer.get.product_id}, "quality": ${offer.get.quality}, "price": $price, "amount": $amount, "merchant_id": "$merchant_id", "left_in_stock": ${remaining_offer.get.amount}, "consumer_id": "${consumer.consumer_id.get}", "http_code": 200, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("buyOffer", s"""{"offer_id": $offer_id, "uid": ${offer.get.uid}, "product_id": ${offer.get.product_id}, "quality": ${offer.get.quality}, "price": $price, "amount": $amount, "merchant_id": "$merchant_id", "left_in_stock": ${remaining_offer.get.amount}, "consumer_id": "${consumer.consumer_id.get}", "http_code": 200, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
         MerchantConnector.notifyMerchant(merchant.get, offer_id, amount, price, remaining_offer.get)
         Success((): Unit)
       }
       case scala.util.Success(v) if v.isEmpty => {
-        kafka_producer.send(KafkaProducerRecord("buyOffer", s"""{"offer_id": $offer_id, "uid": ${offer.get.uid}, "product_id": ${offer.get.product_id}, "quality": ${offer.get.quality}, "price": $price, "amount": $amount, "merchant_id": "$merchant_id", "left_in_stock": 0, "consumer_id": "${consumer.consumer_id.get}", "http_code": 409, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("buyOffer", s"""{"offer_id": $offer_id, "uid": ${offer.get.uid}, "product_id": ${offer.get.product_id}, "quality": ${offer.get.quality}, "price": $price, "amount": $amount, "merchant_id": "$merchant_id", "left_in_stock": 0, "consumer_id": "${consumer.consumer_id.get}", "http_code": 409, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
         Failure("price changed or product not found", 409)
       } // TODO: Check why the update failed
       case scala.util.Failure(_) => {
-        kafka_producer.send(KafkaProducerRecord("buyOffer", s"""{"offer_id": $offer_id, "uid": ${offer.get.uid}, "product_id": ${offer.get.product_id}, "quality": ${offer.get.quality}, "price": $price, "amount": $amount, "merchant_id": "$merchant_id", "left_in_stock": 0, "consumer_id": "${consumer.consumer_id.get}", "http_code": 410, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("buyOffer", s"""{"offer_id": $offer_id, "uid": ${offer.get.uid}, "product_id": ${offer.get.product_id}, "quality": ${offer.get.quality}, "price": $price, "amount": $amount, "merchant_id": "$merchant_id", "left_in_stock": 0, "consumer_id": "${consumer.consumer_id.get}", "http_code": 410, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
         Failure("out of stock", 410)
       }
     }
@@ -281,16 +285,16 @@ object DatabaseStore {
     }
     res match {
       case scala.util.Success(Some(updatedOffer)) => {
-        kafka_producer.send(KafkaProducerRecord("updateOffer", s"""{"offer_id": $offer_id, "uid": ${updatedOffer.uid}, "product_id": ${updatedOffer.product_id}, "quality": ${updatedOffer.quality}, "merchant_id": "${merchant.merchant_id.get}", "amount": ${updatedOffer.amount}, "price": ${updatedOffer.price}, "shipping_time_standard": ${updatedOffer.shipping_time.standard}, "shipping_time_prime": ${updatedOffer.shipping_time.prime.getOrElse(0)}, "prime": ${updatedOffer.prime}, "http_code": 200, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("updateOffer", s"""{"offer_id": $offer_id, "uid": ${updatedOffer.uid}, "product_id": ${updatedOffer.product_id}, "quality": ${updatedOffer.quality}, "merchant_id": "${merchant.merchant_id.get}", "amount": ${updatedOffer.amount}, "price": ${updatedOffer.price}, "shipping_time_standard": ${updatedOffer.shipping_time.standard}, "shipping_time_prime": ${updatedOffer.shipping_time.prime.getOrElse(0)}, "prime": ${updatedOffer.prime}, "http_code": 200, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
         logCurrentMarketSituation(offer.product_id, "updateOffer", merchant.merchant_id.get)
         Success(updatedOffer)
       }
       case scala.util.Success(None) => {
-        kafka_producer.send(KafkaProducerRecord("updateOffer", s"""{"offer_id": $offer_id, "uid": ${offer.uid}, "product_id": ${offer.product_id}, "quality": ${offer.quality}, "merchant_id": "${merchant.merchant_id.get}", "amount": ${offer.amount}, "price": ${offer.price}, "shipping_time_standard": ${offer.shipping_time.standard}, "shipping_time_prime": ${offer.shipping_time.prime.getOrElse(0)}, "prime": ${offer.prime}, "http_code": 404, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("updateOffer", s"""{"offer_id": $offer_id, "uid": ${offer.uid}, "product_id": ${offer.product_id}, "quality": ${offer.quality}, "merchant_id": "${merchant.merchant_id.get}", "amount": ${offer.amount}, "price": ${offer.price}, "shipping_time_standard": ${offer.shipping_time.standard}, "shipping_time_prime": ${offer.shipping_time.prime.getOrElse(0)}, "prime": ${offer.prime}, "http_code": 404, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
         Failure("item not found", 404)
       }
       case scala.util.Failure(e) => {
-        kafka_producer.send(KafkaProducerRecord("updateOffer", s"""{"offer_id": $offer_id, "uid": ${offer.uid}, "product_id": ${offer.product_id}, "quality": ${offer.quality}, "merchant_id": "${merchant.merchant_id.get}", "amount": ${offer.amount}, "price": ${offer.price}, "shipping_time_standard": ${offer.shipping_time.standard}, "shipping_time_prime": ${offer.shipping_time.prime.getOrElse(0)}, "prime": ${offer.prime}, "http_code": 500, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("updateOffer", s"""{"offer_id": $offer_id, "uid": ${offer.uid}, "product_id": ${offer.product_id}, "quality": ${offer.quality}, "merchant_id": "${merchant.merchant_id.get}", "amount": ${offer.amount}, "price": ${offer.price}, "shipping_time_standard": ${offer.shipping_time.standard}, "shipping_time_prime": ${offer.shipping_time.prime.getOrElse(0)}, "prime": ${offer.prime}, "http_code": 500, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
         Failure(e.getMessage, 500)
       }
     }
@@ -307,12 +311,12 @@ object DatabaseStore {
 
     val signature = ProducerConnector.parseSignature(encrypted_signature)
     if (signature.isEmpty || !signature.get.isValid(offer.uid, amount, merchant.merchant_id.getOrElse(""))) {
-      kafka_producer.send(KafkaProducerRecord("restockOffer", s"""{"offer_id": $offer_id, "amount": $amount, "signature": "$encrypted_signature", "merchant_id": "${merchant.merchant_id.get}", "http_code": 451, "timestamp": "${new DateTime()}"}"""))
+      kafka_producer.send(KafkaProducerRecord("restockOffer", s"""{"offer_id": $offer_id, "amount": $amount, "signature": "$encrypted_signature", "merchant_id": "${merchant.merchant_id.get}", "http_code": 451, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
       return Failure("Invalid signature", 451)
     }
 
     if (!DatabaseStore.increaseUsedAmountForSignature(encrypted_signature, amount, signature.get.max_amount)) {
-      kafka_producer.send(KafkaProducerRecord("restockOffer", s"""{"offer_id": $offer_id, "amount": $amount, "signature": "$encrypted_signature", "merchant_id": "${merchant.merchant_id.get}", "http_code": 451, "timestamp": "${new DateTime()}"}"""))
+      kafka_producer.send(KafkaProducerRecord("restockOffer", s"""{"offer_id": $offer_id, "amount": $amount, "signature": "$encrypted_signature", "merchant_id": "${merchant.merchant_id.get}", "http_code": 451, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
       return Failure("Product amount exceeds allowed amount", 451)
     }
 
@@ -327,15 +331,15 @@ object DatabaseStore {
     }
     res match {
       case scala.util.Success(Some(v)) => {
-        kafka_producer.send(KafkaProducerRecord("restockOffer", s"""{"offer_id": $offer_id, "amount": $amount, "signature": "$encrypted_signature", "merchant_id": "${merchant.merchant_id.get}", "http_code": 200, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("restockOffer", s"""{"offer_id": $offer_id, "amount": $amount, "signature": "$encrypted_signature", "merchant_id": "${merchant.merchant_id.get}", "http_code": 200, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
         Success(v)
       }
       case scala.util.Success(None) => {
-        kafka_producer.send(KafkaProducerRecord("restockOffer", s"""{"offer_id": $offer_id, "amount": $amount, "signature": "$encrypted_signature", "merchant_id": "${merchant.merchant_id.get}", "http_code": 404, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("restockOffer", s"""{"offer_id": $offer_id, "amount": $amount, "signature": "$encrypted_signature", "merchant_id": "${merchant.merchant_id.get}", "http_code": 404, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
         Failure("item not found", 404)
       }
       case scala.util.Failure(e) => {
-        kafka_producer.send(KafkaProducerRecord("restockOffer", s"""{"offer_id": $offer_id, "amount": $amount, "signature": "$encrypted_signature", "merchant_id": "${merchant.merchant_id.get}", "http_code": 417, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("restockOffer", s"""{"offer_id": $offer_id, "amount": $amount, "signature": "$encrypted_signature", "merchant_id": "${merchant.merchant_id.get}", "http_code": 417, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
         Failure(e.getMessage, 417)
       }
     }
@@ -351,7 +355,7 @@ object DatabaseStore {
       case scala.util.Success(list) => {
         if (list.nonEmpty) {
           val buf = new StringBuilder
-          buf ++= s"""{"timestamp": "${new DateTime()}", "trigger": "$trigger", "merchant_id": "$merchant_id", "product_id": $product_id, "offers": ["""
+          buf ++= s"""{"timestamp": "${ZonedDateTime.now().format(dateFormatter)}", "trigger": "$trigger", "merchant_id": "$merchant_id", "product_id": $product_id, "offers": ["""
           list.foreach(offer => {
             buf ++= s"""{"offer_id": ${offer.offer_id.get}, "uid": ${offer.uid}, "product_id": ${offer.product_id}, "quality": ${offer.quality}, "merchant_id": "${offer.merchant_id.get}", "amount": ${offer.amount}, "price": ${offer.price}, "shipping_time_standard": ${offer.shipping_time.standard}, "shipping_time_prime": ${offer.shipping_time.prime.getOrElse(0)}, "prime": ${offer.prime}"""
             if (offer != list.last) {
@@ -368,7 +372,7 @@ object DatabaseStore {
     }
   }
 
-  def addMerchant(merchant: Merchant, holdingCostRate: BigDecimal): Result[Merchant] = {
+  def addMerchant(merchant: Merchant, holdingCostRate: BigDecimal = 0): Result[Merchant] = {
     val res = Try(DB localTx { implicit session =>
       sql"""WITH token AS (SELECT random_string(64) AS value),
              token_hash AS (SELECT encode(digest(token.value, 'sha256'), 'base64') AS value FROM token)
@@ -384,12 +388,12 @@ object DatabaseStore {
     })
     res match {
       case scala.util.Success(created_merchant) =>
-        val timestamp = new DateTime()
+        val timestamp = ZonedDateTime.now()
         kafka_producer.send(KafkaProducerRecord("addMerchant", s"""{"merchant_id": "${created_merchant.merchant_id.get}", "api_endpoint_url": "${merchant.api_endpoint_url}", "merchant_name": "${merchant.merchant_name}", "algorithm_name": "${merchant.algorithm_name}", "http_code": 200, "timestamp": "$timestamp"}"""))
         logHoldingCostRate(holdingCostRate, created_merchant.merchant_id.get, timestamp)
         Success(merchant.copy(merchant_id = created_merchant.merchant_id, merchant_token = created_merchant.merchant_token))
       case scala.util.Failure(e) =>
-        kafka_producer.send(KafkaProducerRecord("addMerchant", s"""{"api_endpoint_url": "${merchant.api_endpoint_url}", "merchant_name": "${merchant.merchant_name}", "algorithm_name": "${merchant.algorithm_name}", "http_code": 500, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("addMerchant", s"""{"api_endpoint_url": "${merchant.api_endpoint_url}", "merchant_name": "${merchant.merchant_name}", "algorithm_name": "${merchant.algorithm_name}", "http_code": 500, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
         Failure(e.getMessage, 500)
     }
   }
@@ -406,11 +410,11 @@ object DatabaseStore {
     })
     res match {
       case scala.util.Success(created_merchant) => {
-        kafka_producer.send(KafkaProducerRecord("updateMerchant", s"""{"merchant_id": "${created_merchant.merchant_id.get}", "api_endpoint_url": "${merchant.api_endpoint_url}", "merchant_name": "${merchant.merchant_name}", "algorithm_name": "${merchant.algorithm_name}", "http_code": 200, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("updateMerchant", s"""{"merchant_id": "${created_merchant.merchant_id.get}", "api_endpoint_url": "${merchant.api_endpoint_url}", "merchant_name": "${merchant.merchant_name}", "algorithm_name": "${merchant.algorithm_name}", "http_code": 200, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
         Success(merchant.copy(merchant_id = created_merchant.merchant_id, merchant_token = created_merchant.merchant_token))
       }
       case scala.util.Failure(e) => {
-        kafka_producer.send(KafkaProducerRecord("updateMerchant", s"""{"api_endpoint_url": "${merchant.api_endpoint_url}", "merchant_name": "${merchant.merchant_name}", "algorithm_name": "${merchant.algorithm_name}", "http_code": 500, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("updateMerchant", s"""{"api_endpoint_url": "${merchant.api_endpoint_url}", "merchant_name": "${merchant.merchant_name}", "algorithm_name": "${merchant.algorithm_name}", "http_code": 500, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
         Failure(e.getMessage, 500)
       }
     }
@@ -428,24 +432,24 @@ object DatabaseStore {
     })
     res match {
       case scala.util.Success(id) if id.length > 0 => {
-        kafka_producer.send(KafkaProducerRecord("deleteMerchant", s"""{"merchant_id": "$id", "http_code": 200, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("deleteMerchant", s"""{"merchant_id": "$id", "http_code": 200, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
         Success((): Unit)
       }
       case scala.util.Success(id) if id.length == 0 => {
         if (delete_with_token) {
-          kafka_producer.send(KafkaProducerRecord("deleteMerchant", s"""{"merchant_token": "$delete_parameter", "http_code": 404, "timestamp": "${new DateTime()}"}"""))
+          kafka_producer.send(KafkaProducerRecord("deleteMerchant", s"""{"merchant_token": "$delete_parameter", "http_code": 404, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
           Failure(s"No merchant with merchant_token $delete_parameter", 404)
         } else {
-          kafka_producer.send(KafkaProducerRecord("deleteMerchant", s"""{"merchant_id": "$delete_parameter", "http_code": 404, "timestamp": "${new DateTime()}"}"""))
+          kafka_producer.send(KafkaProducerRecord("deleteMerchant", s"""{"merchant_id": "$delete_parameter", "http_code": 404, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
           Failure(s"No merchant with merchant_id $delete_parameter", 404)
         }
       }
       case scala.util.Failure(e) => {
         if (delete_with_token) {
-          kafka_producer.send(KafkaProducerRecord("deleteMerchant", s"""{"merchant_token": "$delete_parameter", "http_code": 500, "timestamp": "${new DateTime()}"}"""))
+          kafka_producer.send(KafkaProducerRecord("deleteMerchant", s"""{"merchant_token": "$delete_parameter", "http_code": 500, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
           Failure(e.getMessage, 500)
         } else {
-          kafka_producer.send(KafkaProducerRecord("deleteMerchant", s"""{"merchant_id": "$delete_parameter", "http_code": 500, "timestamp": "${new DateTime()}"}"""))
+          kafka_producer.send(KafkaProducerRecord("deleteMerchant", s"""{"merchant_id": "$delete_parameter", "http_code": 500, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
           Failure(e.getMessage, 500)
         }
       }
@@ -459,11 +463,11 @@ object DatabaseStore {
     })
     res match {
       case scala.util.Success(v) => {
-        kafka_producer.send(KafkaProducerRecord("getMerchants", s"""{"http_code": 200, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("getMerchants", s"""{"http_code": 200, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
         Success(v)
       }
       case scala.util.Failure(e) => {
-        kafka_producer.send(KafkaProducerRecord("getMerchants", s"""{"http_code": 500, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("getMerchants", s"""{"http_code": 500, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
         Failure(e.getMessage, 500)
       }
     }
@@ -494,13 +498,13 @@ object DatabaseStore {
     })
     res match {
       case scala.util.Success(Some(v)) =>
-        kafka_producer.send(KafkaProducerRecord("getMerchant", s"""{"merchant_id": "${v.merchant_id.get}", "http_code": 200, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("getMerchant", s"""{"merchant_id": "${v.merchant_id.get}", "http_code": 200, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
         Success(v)
       case scala.util.Success(None) =>
-        kafka_producer.send(KafkaProducerRecord("getMerchant", s"""{"merchant_id": "$id", "http_code": 404, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("getMerchant", s"""{"merchant_id": "$id", "http_code": 404, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
         Failure(s"No merchant with key $id found", 404)
       case scala.util.Failure(e) =>
-        kafka_producer.send(KafkaProducerRecord("getMerchant", s"""{"merchant_id": "$id", "http_code": 500, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("getMerchant", s"""{"merchant_id": "$id", "http_code": 500, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
         Failure(e.getMessage, 500)
     }
   }
@@ -529,16 +533,16 @@ object DatabaseStore {
       })
       res match {
         case scala.util.Success(created_consumer) => {
-          kafka_producer.send(KafkaProducerRecord("addConsumer", s"""{"consumer_id": "${created_consumer.consumer_id.get}", "api_endpoint_url": "${consumer.api_endpoint_url}", "consumer_name": "${consumer.consumer_name}", "description": "${consumer.description}", "http_code": 200, "timestamp": "${new DateTime()}"}"""))
+          kafka_producer.send(KafkaProducerRecord("addConsumer", s"""{"consumer_id": "${created_consumer.consumer_id.get}", "api_endpoint_url": "${consumer.api_endpoint_url}", "consumer_name": "${consumer.consumer_name}", "description": "${consumer.description}", "http_code": 200, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
           Success(consumer.copy(consumer_id = created_consumer.consumer_id, consumer_token = created_consumer.consumer_token))
         }
         case scala.util.Failure(e) => {
-          kafka_producer.send(KafkaProducerRecord("addConsumer", s"""{"api_endpoint_url": "${consumer.api_endpoint_url}", "consumer_name": "${consumer.consumer_name}", "description": "${consumer.description}", "http_code": 500, "timestamp": "${new DateTime()}"}"""))
+          kafka_producer.send(KafkaProducerRecord("addConsumer", s"""{"api_endpoint_url": "${consumer.api_endpoint_url}", "consumer_name": "${consumer.consumer_name}", "description": "${consumer.description}", "http_code": 500, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
           Failure(e.getMessage, 500)
         }
       }
     } else {
-      kafka_producer.send(KafkaProducerRecord("addConsumer", s"""{"api_endpoint_url": "${consumer.api_endpoint_url}", "consumer_name": "${consumer.consumer_name}", "description": "${consumer.description}", "http_code": 451, "timestamp": "${new DateTime()}"}"""))
+      kafka_producer.send(KafkaProducerRecord("addConsumer", s"""{"api_endpoint_url": "${consumer.api_endpoint_url}", "consumer_name": "${consumer.consumer_name}", "description": "${consumer.description}", "http_code": 451, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
       Failure("consumer limit reached", 451)
     }
   }
@@ -555,24 +559,24 @@ object DatabaseStore {
     })
     res match {
       case scala.util.Success(id) if id.length > 0 => {
-        kafka_producer.send(KafkaProducerRecord("deleteConsumer", s"""{"consumer_id": "$id", "http_code": 200, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("deleteConsumer", s"""{"consumer_id": "$id", "http_code": 200, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
         Success((): Unit)
       }
       case scala.util.Success(id) if id.length == 0 => {
         if (delete_with_token) {
-          kafka_producer.send(KafkaProducerRecord("deleteConsumer", s"""{"consumer_token": "$delete_parameter", "http_code": 404, "timestamp": "${new DateTime()}"}"""))
+          kafka_producer.send(KafkaProducerRecord("deleteConsumer", s"""{"consumer_token": "$delete_parameter", "http_code": 404, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
           Failure(s"No consumer with token $delete_parameter", 404)
         } else {
-          kafka_producer.send(KafkaProducerRecord("deleteConsumer", s"""{"consumer_id": "$delete_parameter", "http_code": 404, "timestamp": "${new DateTime()}"}"""))
+          kafka_producer.send(KafkaProducerRecord("deleteConsumer", s"""{"consumer_id": "$delete_parameter", "http_code": 404, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
           Failure(s"No consumer with id $delete_parameter", 404)
         }
       }
       case scala.util.Failure(e) => {
         if (delete_with_token) {
-          kafka_producer.send(KafkaProducerRecord("deleteConsumer", s"""{"consumer_token": "$delete_parameter", "http_code": 500, "timestamp": "${new DateTime()}"}"""))
+          kafka_producer.send(KafkaProducerRecord("deleteConsumer", s"""{"consumer_token": "$delete_parameter", "http_code": 500, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
           Failure(e.getMessage, 500)
         } else {
-          kafka_producer.send(KafkaProducerRecord("deleteConsumer", s"""{"consumer_id": "$delete_parameter", "http_code": 500, "timestamp": "${new DateTime()}"}"""))
+          kafka_producer.send(KafkaProducerRecord("deleteConsumer", s"""{"consumer_id": "$delete_parameter", "http_code": 500, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
           Failure(e.getMessage, 500)
         }
       }
@@ -586,11 +590,11 @@ object DatabaseStore {
     })
     res match {
       case scala.util.Success(v) => {
-        kafka_producer.send(KafkaProducerRecord("getConsumers", s"""{"http_code": 200, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("getConsumers", s"""{"http_code": 200, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
         Success(v)
       }
       case scala.util.Failure(e) => {
-        kafka_producer.send(KafkaProducerRecord("getConsumers", s"""{"http_code": 500, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("getConsumers", s"""{"http_code": 500, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
         Failure(e.getMessage, 500)
       }
     }
@@ -625,24 +629,24 @@ object DatabaseStore {
     })
     res match {
       case scala.util.Success(Some(v)) => {
-        kafka_producer.send(KafkaProducerRecord("getConsumer", s"""{"consumer_id": "${v.consumer_id.get}", "http_code": 200, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("getConsumer", s"""{"consumer_id": "${v.consumer_id.get}", "http_code": 200, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
         Success(v)
       }
       case scala.util.Success(None) => {
         if (!search_with_token) {
-          kafka_producer.send(KafkaProducerRecord("getConsumer", s"""{"consumer_id": "$search_parameter", "http_code": 404, "timestamp": "${new DateTime()}"}"""))
+          kafka_producer.send(KafkaProducerRecord("getConsumer", s"""{"consumer_id": "$search_parameter", "http_code": 404, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
           Failure(s"No consumer with key $search_parameter found", 404)
         } else {
-          kafka_producer.send(KafkaProducerRecord("getConsumer", s"""{"consumer_token": "$search_parameter", "http_code": 404, "timestamp": "${new DateTime()}"}"""))
+          kafka_producer.send(KafkaProducerRecord("getConsumer", s"""{"consumer_token": "$search_parameter", "http_code": 404, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
           Failure(s"No consumer with token $search_parameter found", 404)
         }
       }
       case scala.util.Failure(e) => {
         if (!search_with_token) {
-          kafka_producer.send(KafkaProducerRecord("getConsumer", s"""{"consumer_id": "$search_parameter", "http_code": 500, "timestamp": "${new DateTime()}"}"""))
+          kafka_producer.send(KafkaProducerRecord("getConsumer", s"""{"consumer_id": "$search_parameter", "http_code": 500, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
           Failure(e.getMessage, 500)
         } else {
-          kafka_producer.send(KafkaProducerRecord("getConsumer", s"""{"consumer_token": "$search_parameter", "http_code": 500, "timestamp": "${new DateTime()}"}"""))
+          kafka_producer.send(KafkaProducerRecord("getConsumer", s"""{"consumer_token": "$search_parameter", "http_code": 500, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
           Failure(e.getMessage, 500)
         }
       }
@@ -656,11 +660,11 @@ object DatabaseStore {
     })
     res match {
       case scala.util.Success(id) => {
-        kafka_producer.send(KafkaProducerRecord("addProduct", s"""{"product_id": $id, "name": "${product.name}", "genre": "${product.genre}", "http_code": 200, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("addProduct", s"""{"product_id": $id, "name": "${product.name}", "genre": "${product.genre}", "http_code": 200, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
         Success(product.copy(product_id = Some(id)))
       }
       case scala.util.Failure(e) => {
-        kafka_producer.send(KafkaProducerRecord("addProduct", s"""{"name": "${product.name}", "genre": "${product.genre}", "http_code": 500, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("addProduct", s"""{"name": "${product.name}", "genre": "${product.genre}", "http_code": 500, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
         Failure(e.getMessage, 500)
       }
     }
@@ -672,15 +676,15 @@ object DatabaseStore {
     })
     res match {
       case scala.util.Success(v) if v == 1 => {
-        kafka_producer.send(KafkaProducerRecord("deleteProduct", s"""{"product_id": $product_id, "http_code": 200, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("deleteProduct", s"""{"product_id": $product_id, "http_code": 200, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
         Success((): Unit)
       }
       case scala.util.Success(v) if v != 1 => {
-        kafka_producer.send(KafkaProducerRecord("deleteProduct", s"""{"product_id": $product_id, "http_code": 404, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("deleteProduct", s"""{"product_id": $product_id, "http_code": 404, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
         Failure(s"No product with id $product_id", 404)
       }
       case scala.util.Failure(e) => {
-        kafka_producer.send(KafkaProducerRecord("deleteProduct", s"""{"product_id": $product_id, "http_code": 500, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("deleteProduct", s"""{"product_id": $product_id, "http_code": 500, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
         Failure(e.getMessage, 500)
       }
     }
@@ -693,11 +697,11 @@ object DatabaseStore {
     })
     res match {
       case scala.util.Success(v) => {
-        kafka_producer.send(KafkaProducerRecord("getProducts", s"""{"http_code": 200, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("getProducts", s"""{"http_code": 200, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
         Success(v)
       }
       case scala.util.Failure(e) => {
-        kafka_producer.send(KafkaProducerRecord("getProducts", s"""{"http_code": 500, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("getProducts", s"""{"http_code": 500, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
         Failure(e.getMessage, 500)
       }
     }
@@ -712,15 +716,15 @@ object DatabaseStore {
     })
     res match {
       case scala.util.Success(Some(v)) => {
-        kafka_producer.send(KafkaProducerRecord("getProduct", s"""{"product_id": $product_id, "http_code": 200, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("getProduct", s"""{"product_id": $product_id, "http_code": 200, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
         Success(v)
       }
       case scala.util.Success(None) => {
-        kafka_producer.send(KafkaProducerRecord("getProduct", s"""{"product_id": $product_id, "http_code": 404, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("getProduct", s"""{"product_id": $product_id, "http_code": 404, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
         Failure(s"No product with key $product_id found", 404)
       }
       case scala.util.Failure(e) => {
-        kafka_producer.send(KafkaProducerRecord("getProduct", s"""{"product_id": $product_id, "http_code": 500, "timestamp": "${new DateTime()}"}"""))
+        kafka_producer.send(KafkaProducerRecord("getProduct", s"""{"product_id": $product_id, "http_code": 500, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
         Failure(e.getMessage, 500)
       }
     }
@@ -770,8 +774,8 @@ object DatabaseStore {
     }
   }
 
-  def logHoldingCostRate(rate: BigDecimal, merchant_id: String, timestamp: DateTime = new DateTime): Unit = {
+  def logHoldingCostRate(rate: BigDecimal, merchant_id: String, timestamp: ZonedDateTime = ZonedDateTime.now()): Unit = {
     kafka_producer.send(KafkaProducerRecord("holding_cost_rate",
-      s"""{"merchant_id": "$merchant_id", "rate": $rate, "timestamp": "$timestamp"}"""))
+      s"""{"merchant_id": "$merchant_id", "rate": $rate, "timestamp": "${timestamp.format(dateFormatter)}"}"""))
   }
 }
