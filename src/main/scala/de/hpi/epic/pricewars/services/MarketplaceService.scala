@@ -10,6 +10,7 @@ import de.hpi.epic.pricewars.utils.ResultConverter._
 import spray.http._
 import spray.routing._
 
+
 class MarketplaceServiceActor extends Actor with ActorLogging with MarketplaceService {
   override def actorRefFactory: ActorContext = context
 
