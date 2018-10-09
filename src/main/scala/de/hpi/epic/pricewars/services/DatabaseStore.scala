@@ -3,6 +3,7 @@ package de.hpi.epic.pricewars.services
 import java.time.format.DateTimeFormatter
 import java.time.ZonedDateTime
 
+import akka.http.scaladsl.model.{StatusCode, StatusCodes}
 import cakesolutions.kafka.KafkaProducer.Conf
 import cakesolutions.kafka.{KafkaProducer, KafkaProducerRecord}
 import com.typesafe.config.{Config, ConfigFactory}
@@ -10,10 +11,8 @@ import de.hpi.epic.pricewars.connectors.{MerchantConnector, ProducerConnector}
 import de.hpi.epic.pricewars.data._
 import de.hpi.epic.pricewars.utils.{Failure, Result, Success}
 import org.apache.kafka.common.serialization.StringSerializer
-
 import scalikejdbc._
 import scalikejdbc.config._
-import spray.http.{StatusCode, StatusCodes}
 
 import scala.util.Try
 

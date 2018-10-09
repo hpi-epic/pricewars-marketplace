@@ -26,7 +26,7 @@ object Result {
 
   def apply[T](r: => T): Result[T] =
     try Success(r) catch {
-      case NonFatal(e) => Failure(e.getMessage, 500)
+      case NonFatal(e) => Failure(e.getMessage)
     }
 
 }
