@@ -2,7 +2,6 @@ package de.hpi.epic.pricewars.services
 
 import akka.actor.{Actor, ActorContext, ActorLogging}
 import akka.event.Logging
-import de.hpi.epic.pricewars.CORSSupport
 import de.hpi.epic.pricewars.utils.JSONConverter._
 import de.hpi.epic.pricewars.connectors.ProducerConnector
 import de.hpi.epic.pricewars.data._
@@ -18,11 +17,10 @@ class MarketplaceServiceActor extends Actor with ActorLogging with MarketplaceSe
   override def receive: Receive = runRoute(route)
 }
 
-trait MarketplaceService extends HttpService with CORSSupport {
+trait MarketplaceService extends HttpService {
   var defaultHoldingCostRate: BigDecimal = 0
   val route: Route = respondWithMediaType(MediaTypes.`application/json`) {
     logRequestResponse("marketplace", Logging.InfoLevel) {
-      cors {
         path("offers") {
           get {
             optionalHeaderValueByName(HttpHeaders.Authorization.name) { authorizationHeader =>
@@ -320,7 +318,6 @@ trait MarketplaceService extends HttpService with CORSSupport {
             }
           }
         }
-      }
     }
   }
 }

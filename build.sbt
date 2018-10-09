@@ -10,6 +10,7 @@ resolvers += Resolver.bintrayRepo("cakesolutions", "maven")
 
 libraryDependencies ++= {
   val akkaV = "2.5.16"
+  val akkaHttpV = "10.1.5"
   val sprayV = "1.3.3"
   val specs2V = "3.8.6"
   val scalikejdbcV = "3.3.0"
@@ -29,6 +30,7 @@ libraryDependencies ++= {
     "com.typesafe.akka"       %%  "akka-actor"                % akkaV,
     "com.typesafe.akka"       %%  "akka-testkit"              % akkaV % "test",
     "com.typesafe.akka"       %%  "akka-slf4j"                % akkaV,
+    //"com.typesafe.akka"       %%  "akka-http"                 % akkaHttpV,
     "org.specs2"              %%  "specs2-core"               % specs2V % "test",
     "org.scalikejdbc"         %%  "scalikejdbc"               % scalikejdbcV,
     "org.scalikejdbc"         %%  "scalikejdbc-config"        % scalikejdbcV,

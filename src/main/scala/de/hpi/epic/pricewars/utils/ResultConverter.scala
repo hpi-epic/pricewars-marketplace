@@ -3,6 +3,7 @@ package de.hpi.epic.pricewars.utils
 import spray.http.StatusCode
 import spray.httpx.marshalling.ToResponseMarshallable
 import spray.json._
+import scala.language.implicitConversions
 
 object ResultConverter {
   implicit def toToResponseMarshallable[T](res: Result[T])
