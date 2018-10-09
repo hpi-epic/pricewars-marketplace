@@ -9,6 +9,7 @@ import de.hpi.epic.pricewars.data._
 import de.hpi.epic.pricewars.utils.ResultConverter._
 import spray.http._
 import spray.routing._
+import scala.language.postfixOps
 
 
 class MarketplaceServiceActor extends Actor with ActorLogging with MarketplaceService {
