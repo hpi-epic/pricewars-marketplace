@@ -43,27 +43,27 @@ object MarketplaceService {
         post {
           optionalHeaderValueByType(classOf[Authorization]) { authorizationHeader =>
             entity(as[Offer]) { offer =>
-                complete {
-                  DatabaseStore
-                    .getMerchantByToken(ValidateLimit.getTokenString(authorizationHeader).getOrElse(""))
-                    .flatMap(merchant => DatabaseStore.addOffer(offer, merchant))
-                    .successHttpCode(StatusCodes.Created)
-                }
+              complete {
+                DatabaseStore
+                  .getMerchantByToken(ValidateLimit.getTokenString(authorizationHeader).getOrElse(""))
+                  .flatMap(merchant => DatabaseStore.addOffer(offer, merchant))
+                  .successHttpCode(StatusCodes.Created)
+              }
             } ~
               entity(as[Array[Offer]]) { offerArray =>
-                  complete {
-                    //TODO: refactor this with map
-                    val merchant = DatabaseStore.getMerchantByToken(
-                      ValidateLimit.getTokenString(authorizationHeader).getOrElse("")
-                    )
-                    val statusCode = StatusCodes.Unauthorized
-                    if (merchant.isSuccess) {
-                      val (bulkResult, status) = DatabaseStore.addBulkOffers(offerArray, merchant.get)
-                      bulkResult.successHttpCode(status)
-                    } else {
-                      statusCode -> s"""{"error": "Not authorized! Status Code: $statusCode"}"""
-                    }
+                complete {
+                  //TODO: refactor this with map
+                  val merchant = DatabaseStore.getMerchantByToken(
+                    ValidateLimit.getTokenString(authorizationHeader).getOrElse("")
+                  )
+                  val statusCode = StatusCodes.Unauthorized
+                  if (merchant.isSuccess) {
+                    val (bulkResult, status) = DatabaseStore.addBulkOffers(offerArray, merchant.get)
+                    bulkResult.successHttpCode(status)
+                  } else {
+                    statusCode -> s"""{"error": "Not authorized! Status Code: $statusCode"}"""
                   }
+                }
               }
           }
         }
@@ -88,11 +88,11 @@ object MarketplaceService {
           put {
             optionalHeaderValueByType(classOf[Authorization]) { authorizationHeader =>
               entity(as[Offer]) { offer =>
-                  complete {
-                    ValidateLimit
-                      .checkMerchant(authorizationHeader)
-                      .flatMap(merchant => DatabaseStore.updateOffer(id, offer, merchant))
-                  }
+                complete {
+                  ValidateLimit
+                    .checkMerchant(authorizationHeader)
+                    .flatMap(merchant => DatabaseStore.updateOffer(id, offer, merchant))
+                }
               }
             }
           }
@@ -101,12 +101,12 @@ object MarketplaceService {
         post {
           optionalHeaderValueByType(classOf[Authorization]) { authorizationHeader =>
             entity(as[BuyRequest]) { buyRequest =>
-                complete {
-                  val token = ValidateLimit.getTokenString(authorizationHeader)
-                  DatabaseStore.getConsumerByToken(token.getOrElse(""))
-                    .flatMap(consumer => DatabaseStore.buyOffer(id, buyRequest.price, buyRequest.amount, consumer))
-                    .successHttpCode(StatusCodes.NoContent)
-                }
+              complete {
+                val token = ValidateLimit.getTokenString(authorizationHeader)
+                DatabaseStore.getConsumerByToken(token.getOrElse(""))
+                  .flatMap(consumer => DatabaseStore.buyOffer(id, buyRequest.price, buyRequest.amount, consumer))
+                  .successHttpCode(StatusCodes.NoContent)
+              }
             }
           }
         }
@@ -134,18 +134,18 @@ object MarketplaceService {
         } ~
           post {
             entity(as[Merchant]) { merchant =>
-                complete {
-                  DatabaseStore.addMerchant(merchant, defaultHoldingCostRate).successHttpCode(StatusCodes.Created)
-                }
+              complete {
+                DatabaseStore.addMerchant(merchant, defaultHoldingCostRate).successHttpCode(StatusCodes.Created)
+              }
             }
           }
       } ~
       path("merchants" / "token" / Segment) { token =>
         put {
           entity(as[Merchant]) { merchant =>
-              complete {
-                DatabaseStore.updateMerchant(token, merchant).successHttpCode(StatusCodes.OK)
-              }
+            complete {
+              DatabaseStore.updateMerchant(token, merchant).successHttpCode(StatusCodes.OK)
+            }
           }
         } ~
           delete {
@@ -182,9 +182,9 @@ object MarketplaceService {
         } ~
           post {
             entity(as[Consumer]) { consumer =>
-                complete {
-                  DatabaseStore.addConsumer(consumer).successHttpCode(StatusCodes.Created)
-                }
+              complete {
+                DatabaseStore.addConsumer(consumer).successHttpCode(StatusCodes.Created)
+              }
             }
           }
       } ~
@@ -221,9 +221,9 @@ object MarketplaceService {
         } ~
           post {
             entity(as[Product]) { product =>
-                complete {
-                  DatabaseStore.addProduct(product).successHttpCode(StatusCodes.Created)
-                }
+              complete {
+                DatabaseStore.addProduct(product).successHttpCode(StatusCodes.Created)
+              }
             }
           }
       } ~
@@ -266,13 +266,13 @@ object MarketplaceService {
         } ~
           put {
             entity(as[Settings]) { settings =>
-                complete {
-                  ValidateLimit.setLimit(
-                    settings.consumer_per_minute,
-                    settings.max_updates_per_sale,
-                    settings.max_req_per_sec)
-                  StatusCode.int2StatusCode(200) -> s"""{}"""
-                }
+              complete {
+                ValidateLimit.setLimit(
+                  settings.consumer_per_minute,
+                  settings.max_updates_per_sale,
+                  settings.max_req_per_sec)
+                StatusCode.int2StatusCode(200) -> s"""{}"""
+              }
             }
           }
       } ~
