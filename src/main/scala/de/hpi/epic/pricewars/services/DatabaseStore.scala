@@ -344,7 +344,7 @@ object DatabaseStore {
     }
   }
 
-  def logCurrentMarketSituation(product_id: Long, trigger: String = "unknown", merchant_id: String = "unknown") = {
+  def logCurrentMarketSituation(product_id: Long, trigger: String, merchant_id: String) = {
     val res = Try(DB localTx { implicit session =>
       sql"""SELECT offer_id, uid, product_id, quality, merchant_id, amount, price, shipping_time_standard, shipping_time_prime, prime
         FROM offers

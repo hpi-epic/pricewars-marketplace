@@ -1,9 +1,8 @@
 package de.hpi.epic.pricewars.services
 
 import scala.language.postfixOps
-import akka.actor.{Actor, ActorContext, ActorLogging}
 import akka.event.Logging
-import akka.http.scaladsl.model.{ContentTypes, HttpEntity, StatusCode, StatusCodes}
+import akka.http.scaladsl.model.{StatusCode, StatusCodes}
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.server.directives.DebuggingDirectives
 import akka.http.scaladsl.server.Directives._
@@ -15,7 +14,7 @@ import de.hpi.epic.pricewars.utils.ResultConverter._
 
 
 object MarketplaceService {
-  DebuggingDirectives.logRequestResult("logging_test_test", Logging.InfoLevel)
+  //DebuggingDirectives.logRequestResult("logging_test_test", Logging.InfoLevel)
 
   var defaultHoldingCostRate: BigDecimal = 0
 
@@ -27,7 +26,7 @@ object MarketplaceService {
             parameter('include_empty_offer.as[Boolean] ?) { include_empty_offer =>
               complete {
                 if (include_empty_offer.getOrElse(false)) {
-                  val merchant = DatabaseStore.getMerchantByToken(ValidateLimit.getTokenString(Option(authorizationHeader.get.credentials.token)).getOrElse(""))
+                  val merchant = DatabaseStore.getMerchantByToken(ValidateLimit.getTokenString(authorizationHeader).getOrElse(""))
                   if (merchant.isSuccess) {
                     DatabaseStore.getOffers(product_id, merchant.get.merchant_id)
                   } else {
@@ -46,7 +45,7 @@ object MarketplaceService {
             entity(as[Offer]) { offer =>
                 complete {
                   DatabaseStore
-                    .getMerchantByToken(ValidateLimit.getTokenString(Option(authorizationHeader.get.credentials.token)).getOrElse(""))
+                    .getMerchantByToken(ValidateLimit.getTokenString(authorizationHeader).getOrElse(""))
                     .flatMap(merchant => DatabaseStore.addOffer(offer, merchant))
                     .successHttpCode(StatusCodes.Created)
                 }
@@ -55,7 +54,7 @@ object MarketplaceService {
                   complete {
                     //TODO: refactor this with map
                     val merchant = DatabaseStore.getMerchantByToken(
-                      ValidateLimit.getTokenString(Option(authorizationHeader.get.credentials.token)).getOrElse("")
+                      ValidateLimit.getTokenString(authorizationHeader).getOrElse("")
                     )
                     val statusCode = StatusCodes.Unauthorized
                     if (merchant.isSuccess) {
@@ -80,7 +79,7 @@ object MarketplaceService {
               entity(as[EncryptedSignature]) { signature =>
                 complete {
                   ValidateLimit
-                    .checkMerchant(Option(authorizationHeader.get.credentials.token))
+                    .checkMerchant(authorizationHeader)
                     .flatMap(merchant => DatabaseStore.deleteOffer(id, merchant, signature))
                 }
               }
@@ -91,7 +90,7 @@ object MarketplaceService {
               entity(as[Offer]) { offer =>
                   complete {
                     ValidateLimit
-                      .checkMerchant(Option(authorizationHeader.get.credentials.token))
+                      .checkMerchant(authorizationHeader)
                       .flatMap(merchant => DatabaseStore.updateOffer(id, offer, merchant))
                   }
               }
@@ -103,7 +102,7 @@ object MarketplaceService {
           optionalHeaderValueByType(classOf[Authorization]) { authorizationHeader =>
             entity(as[BuyRequest]) { buyRequest =>
                 complete {
-                  val token = ValidateLimit.getTokenString(Option(authorizationHeader.get.credentials.token))
+                  val token = ValidateLimit.getTokenString(authorizationHeader)
                   DatabaseStore.getConsumerByToken(token.getOrElse(""))
                     .flatMap(consumer => DatabaseStore.buyOffer(id, buyRequest.price, buyRequest.amount, consumer))
                     .successHttpCode(StatusCodes.NoContent)
@@ -118,7 +117,7 @@ object MarketplaceService {
             entity(as[OfferPatch]) { offer =>
               complete {
                 DatabaseStore
-                  .getMerchantByToken(ValidateLimit.getTokenString(Option(authorizationHeader.get.credentials.token)).getOrElse(""))
+                  .getMerchantByToken(ValidateLimit.getTokenString(authorizationHeader).getOrElse(""))
                   .flatMap(merchant =>
                     DatabaseStore.restockOffer(id, offer.amount.getOrElse(0), offer.signature.getOrElse(""), merchant)
                   )
@@ -164,7 +163,7 @@ object MarketplaceService {
           delete {
             optionalHeaderValueByType(classOf[Authorization]) { authorizationHeader =>
               complete {
-                val token = ValidateLimit.getTokenString(Option(authorizationHeader.get.credentials.token))
+                val token = ValidateLimit.getTokenString(authorizationHeader)
                 DatabaseStore
                   .getMerchantByToken(token.getOrElse(""))
                   .flatMap(merchant => {
@@ -205,7 +204,7 @@ object MarketplaceService {
           delete {
             optionalHeaderValueByType(classOf[Authorization]) { authorizationHeader =>
               complete {
-                val token = ValidateLimit.getTokenString(Option(authorizationHeader.get.credentials.token))
+                val token = ValidateLimit.getTokenString(authorizationHeader)
                 DatabaseStore
                   .getConsumerByToken(token.getOrElse(""))
                   .flatMap(consumer => DatabaseStore.deleteConsumer(consumer.consumer_id.get, delete_with_token = false))

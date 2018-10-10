@@ -9,6 +9,8 @@ import spray.http.StatusCodes
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
+import akka.http.scaladsl.model.headers.Authorization
+
 object ValidateLimit {
   val precisionFactor = 100
   val dateFormatter: DateTimeFormatter = DateTimeFormatter.ISO_INSTANT
@@ -55,26 +57,25 @@ object ValidateLimit {
     limit.now
   }
 
-  def checkMerchant(AuthorizationHeader: Option[String]): Result[Merchant] = {
+  def checkMerchant(AuthorizationHeader: Option[Authorization]): Result[Merchant] = {
     val tokenOption = getTokenString(AuthorizationHeader)
     check(tokenOption) flatMap ( token => {
       DatabaseStore.getMerchantByToken(token)
     })
   }
 
-  def checkConsumer(AuthorizationHeader: Option[String]): Result[Consumer] = {
+  def checkConsumer(AuthorizationHeader: Option[Authorization]): Result[Consumer] = {
     val tokenOption = getTokenString(AuthorizationHeader)
     check(tokenOption) flatMap ( token => {
       DatabaseStore.getConsumerByToken(token)
     })
   }
 
-  def getTokenString(AuthorizationHeader: Option[String]): Option[String] = {
-    AuthorizationHeader.flatMap( headerValue => {
-      val values = headerValue.split(" ")
-      if (values.length == 2 && values{0} == "Token") Some(values{1})
-      else None
-    })
+  def getTokenString(AuthorizationHeader: Option[Authorization]): Option[String] = {
+    AuthorizationHeader match {
+      case Some(authHeader) => Some(authHeader.credentials.token())
+      case None => None
+    }
   }
 
   private def check(tokenOption: Option[String]): Result[String] = {
