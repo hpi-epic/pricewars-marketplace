@@ -22,10 +22,7 @@ libraryDependencies ++= {
   val scalarxV = "0.3.2"
 
   Seq(
-    "io.spray"                %%  "spray-servlet"             % sprayV,
-    "io.spray"                %%  "spray-routing"             % sprayV,
     "io.spray"                %%  "spray-json"                % sprayV,
-    "io.spray"                %%  "spray-can"                 % sprayV,
     "io.spray"                %%  "spray-testkit"             % sprayV % "test" exclude("org.specs2", "specs2_2.11"),
     "com.typesafe.akka"       %%  "akka-actor"                % akkaV,
     "com.typesafe.akka"       %%  "akka-testkit"              % akkaV % "test",
@@ -46,5 +43,3 @@ libraryDependencies ++= {
 }
 
 parallelExecution in Test := false
-
-enablePlugins(TomcatPlugin)

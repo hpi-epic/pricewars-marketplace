@@ -5,10 +5,10 @@ import com.typesafe.config.{Config, ConfigFactory}
 import de.hpi.epic.pricewars.data.{Consumer, Merchant}
 import de.hpi.epic.pricewars.utils.{Failure, Result, Success}
 import rx.{Rx, Var}
-import spray.http.StatusCodes
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
+import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.model.headers.Authorization
 
 object ValidateLimit {
