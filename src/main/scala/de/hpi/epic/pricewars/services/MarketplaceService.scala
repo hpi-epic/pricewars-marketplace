@@ -140,7 +140,7 @@ object MarketplaceService {
             }
           }
       } ~
-      path("merchants" / "token" / Segment) { token =>
+      path("merchants" / "token" / Remaining) { token =>
         put {
           entity(as[Merchant]) { merchant =>
             complete {
@@ -154,7 +154,7 @@ object MarketplaceService {
             }
           }
       } ~
-      path("merchants" / Segment) { id =>
+      path("merchants" / Remaining) { id =>
         get {
           complete {
             DatabaseStore.getMerchant(id)
@@ -188,14 +188,14 @@ object MarketplaceService {
             }
           }
       } ~
-      path("consumers" / "token" / Segment) { token =>
+      path("consumers" / "token" / Remaining) { token =>
         delete {
           complete {
             DatabaseStore.deleteConsumer(token).successHttpCode(StatusCodes.NoContent)
           }
         }
       } ~
-      path("consumers" / Segment) { id =>
+      path("consumers" / Remaining) { id =>
         get {
           complete {
             DatabaseStore.getConsumer(id)
@@ -276,7 +276,7 @@ object MarketplaceService {
             }
           }
       } ~
-      path("holding_cost_rate" / Segment) { merchant_id =>
+      path("holding_cost_rate" / Remaining) { merchant_id =>
         get {
           complete {
             DatabaseStore.getHoldingCostRate(merchant_id)
