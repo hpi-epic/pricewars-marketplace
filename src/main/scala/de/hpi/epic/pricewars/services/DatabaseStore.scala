@@ -141,7 +141,7 @@ object DatabaseStore {
       case Some(failure) => failure match {
         case f:Failure[Offer] => Success(
           res1.flatMap {
-            case Success(v) => Some(v)
+            case Success(v, _) => Some(v)
             case _ => None
           }) -> f.code
       }
@@ -153,7 +153,7 @@ object DatabaseStore {
 
     var offer: Option[Offer] = None
     offerResult match {
-      case Success(offerFound) => offer = Some(offerFound)
+      case Success(offerFound, _) => offer = Some(offerFound)
     }
 
     val signature = ProducerConnector.parseSignature(encrypted_signature.signature)
@@ -236,13 +236,13 @@ object DatabaseStore {
 
     var offer: Option[Offer] = None
     offerResult match {
-      case Success(offerFound) => offer = Some(offerFound)
+      case Success(offerFound, _) => offer = Some(offerFound)
     }
 
     var merchant: Option[Merchant] = None
     var merchant_id: String = ""
     offerResult.flatMap(offer => DatabaseStore.getMerchant(offer.merchant_id.get)) match {
-      case Success(merchantFound) => {
+      case Success(merchantFound, _) => {
         merchant = Some(merchantFound)
         merchant_id = merchantFound.merchant_id.getOrElse("")
       }
@@ -302,7 +302,7 @@ object DatabaseStore {
   def restockOffer(offer_id: Long, amount: Int, encrypted_signature: String, merchant: Merchant): Result[Offer] = {
     var offerOption: Option[Offer] = None
     DatabaseStore.getOffer(offer_id) match {
-      case Success(offerFound) => {
+      case Success(offerFound, _) => {
         offerOption = Some(offerFound)
       }
     }

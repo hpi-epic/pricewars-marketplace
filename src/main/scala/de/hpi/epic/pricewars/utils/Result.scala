@@ -11,14 +11,15 @@ trait Result[T] {
   def isFailure: Boolean = !isSuccess
 
   def get: T
+  def code: Int
 
   def map[A](f: T => A): Result[A] = self match {
-    case Success(value) => Success(f(value))
+    case Success(value, code) => Success(f(value), code)
     case Failure(message, code) => Failure(message, code)
   }
 
   def flatMap[A](f: T => Result[A]): Result[A] = self.map(f) match {
-    case Success(s) => s
+    case Success(s, _) => s
     case Failure(message, code) => Failure(message, code)
   }
 
@@ -26,7 +27,7 @@ trait Result[T] {
                           (implicit successWriter: JsonWriter[T],
                            failureWriter: JsonWriter[Failure[T]]): String =
     self match {
-      case Success(value) => value.toJson(successWriter).toString()
+      case s: Success[T] => s.value.toJson(successWriter).toString()
       case f: Failure[T] => f.toJson(failureWriter).toString()
     }
 
@@ -39,7 +40,7 @@ object Result {
     }
 }
 
-case class Success[T](value: T) extends Result[T] {
+case class Success[T](value: T, code: Int = 200) extends Result[T] {
   override def isSuccess: Boolean = true
 
   override def get: T = value

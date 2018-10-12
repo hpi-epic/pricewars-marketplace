@@ -220,17 +220,16 @@ object MarketplaceService {
         } ~
           post {
             entity(as[Product]) { product =>
-              complete {
-                DatabaseStore.addProduct(product).successHttpCode(StatusCodes.Created)
-              }
+              complete(StatusCodes.Created,
+                HttpEntity(ContentTypes.`application/json`, DatabaseStore.addProduct(product).toHttpResponseString))
             }
           }
       } ~
       path("products" / LongNumber) { id =>
         get {
-          complete {
-            DatabaseStore.getProduct(id)
-          }
+          val result = DatabaseStore.getProduct(id)
+          complete(StatusCode.int2StatusCode(result.code),
+            HttpEntity(ContentTypes.`application/json`, result.toHttpResponseString))
         } ~
           delete {
             complete {
