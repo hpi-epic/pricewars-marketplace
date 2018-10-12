@@ -1,5 +1,5 @@
 package de.hpi.epic.pricewars
-
+/*
 import org.specs2.mutable.Specification
 import spray.testkit.Specs2RouteTest
 import spray.http._
@@ -8,9 +8,6 @@ import de.hpi.epic.pricewars.utils.JSONConverter._
 import de.hpi.epic.pricewars.data.Merchant
 import de.hpi.epic.pricewars.services.{DatabaseStore, MarketplaceService}
 
-/**
-  * Created by Jan on 02.11.2016.
-  */
 class MerchantTests extends Specification with BeforeAfterEach with Specs2RouteTest with MarketplaceService {
   sequential
 
@@ -86,3 +83,4 @@ class MerchantTests extends Specification with BeforeAfterEach with Specs2RouteT
     }
   }
 }
+*/

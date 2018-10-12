@@ -22,23 +22,23 @@ libraryDependencies ++= {
   val scalarxV = "0.3.2"
 
   Seq(
-    "io.spray"                %%  "spray-json"                % sprayV,
-    "io.spray"                %%  "spray-testkit"             % sprayV % "test" exclude("org.specs2", "specs2_2.11"),
-    "com.typesafe.akka"       %%  "akka-actor"                % akkaV,
-    "com.typesafe.akka"       %%  "akka-testkit"              % akkaV % "test",
-    "com.typesafe.akka"       %%  "akka-slf4j"                % akkaV,
-    "com.typesafe.akka"       %%  "akka-stream"               % akkaV,
-    "com.typesafe.akka"       %%  "akka-http"                 % akkaHttpV,
-    "com.typesafe.akka"       %%  "akka-http-spray-json"      % akkaHttpV,
-    "org.specs2"              %%  "specs2-core"               % specs2V % "test",
-    "org.scalikejdbc"         %%  "scalikejdbc"               % scalikejdbcV,
-    "org.scalikejdbc"         %%  "scalikejdbc-config"        % scalikejdbcV,
-    "ch.qos.logback"          %   "logback-classic"           % logbackV,
-    "net.cakesolutions"       %% "scala-kafka-client-akka"    % kafkaV,
-    "org.scala-lang.modules"  %%  "scala-xml"                 % scalaxmlV,
-    "commons-codec"           %  "commons-codec"              % commonsCodecV,
-    "net.debasishg"           %% "redisclient"                % redisClientV,
-    "com.lihaoyi"             %% "scalarx"                    % scalarxV
+    "io.spray"                %% "spray-json"                % sprayV,
+    "com.typesafe.akka"       %% "akka-actor"                % akkaV,
+    "com.typesafe.akka"       %% "akka-testkit"              % akkaV % "test",
+    "com.typesafe.akka"       %% "akka-slf4j"                % akkaV,
+    "com.typesafe.akka"       %% "akka-stream"               % akkaV,
+    "com.typesafe.akka"       %% "akka-http"                 % akkaHttpV,
+    "com.typesafe.akka"       %% "akka-http-spray-json"      % akkaHttpV,
+    "com.typesafe.akka"       %% "akka-http-testkit"         % akkaHttpV % "test",
+    "org.specs2"              %% "specs2-core"               % specs2V % "test",
+    "org.scalikejdbc"         %% "scalikejdbc"               % scalikejdbcV,
+    "org.scalikejdbc"         %% "scalikejdbc-config"        % scalikejdbcV,
+    "ch.qos.logback"          %  "logback-classic"           % logbackV,
+    "net.cakesolutions"       %% "scala-kafka-client-akka"   % kafkaV,
+    "org.scala-lang.modules"  %% "scala-xml"                 % scalaxmlV,
+    "commons-codec"           %  "commons-codec"             % commonsCodecV,
+    "net.debasishg"           %% "redisclient"               % redisClientV,
+    "com.lihaoyi"             %% "scalarx"                   % scalarxV
   )
 }
 

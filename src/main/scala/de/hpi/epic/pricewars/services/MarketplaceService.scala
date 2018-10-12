@@ -2,7 +2,8 @@ package de.hpi.epic.pricewars.services
 
 import scala.language.postfixOps
 import akka.event.Logging
-import akka.http.scaladsl.model.{StatusCode, StatusCodes}
+import akka.http.scaladsl.marshalling.Marshaller
+import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.server.directives.DebuggingDirectives
 import akka.http.scaladsl.server.Directives._
@@ -215,9 +216,7 @@ object MarketplaceService {
       } ~
       path("products") {
         get {
-          complete {
-            DatabaseStore.getProducts
-          }
+          complete(HttpEntity(ContentTypes.`application/json`, DatabaseStore.getProducts.toHttpResponseString))
         } ~
           post {
             entity(as[Product]) { product =>
