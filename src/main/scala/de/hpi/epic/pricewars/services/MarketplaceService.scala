@@ -129,15 +129,15 @@ object MarketplaceService {
       } ~
       path("merchants") {
         get {
-          complete {
-            DatabaseStore.getMerchants
-          }
+          val result = DatabaseStore.getMerchants
+          complete(StatusCode.int2StatusCode(result.code),
+            HttpEntity(ContentTypes.`application/json`, result.toHttpResponseString))
         } ~
           post {
             entity(as[Merchant]) { merchant =>
-              complete {
-                DatabaseStore.addMerchant(merchant, defaultHoldingCostRate).successHttpCode(StatusCodes.Created)
-              }
+              val result = DatabaseStore.addMerchant(merchant, defaultHoldingCostRate)
+              complete(StatusCode.int2StatusCode(result.code),
+                HttpEntity(ContentTypes.`application/json`, result.toHttpResponseString))
             }
           }
       } ~
@@ -155,11 +155,12 @@ object MarketplaceService {
             }
           }
       } ~
+      // TODO: Instead of route merchants/<id> use route merchants/ and get the id from the authorization header
       path("merchants" / Remaining) { id =>
         get {
-          complete {
-            DatabaseStore.getMerchant(id)
-          }
+          val result = DatabaseStore.getMerchant(id)
+          complete(StatusCode.int2StatusCode(result.code),
+            HttpEntity(ContentTypes.`application/json`, result.toHttpResponseString))
         } ~
           delete {
             optionalHeaderValueByType(classOf[Authorization]) { authorizationHeader =>
