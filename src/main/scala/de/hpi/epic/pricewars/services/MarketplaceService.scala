@@ -177,42 +177,35 @@ object MarketplaceService {
       } ~
       path("consumers") {
         get {
-          complete {
-            DatabaseStore.getConsumers
-          }
+          val result = DatabaseStore.getConsumers
+          complete(StatusCode.int2StatusCode(result.code),
+            HttpEntity(ContentTypes.`application/json`, result.toHttpResponseString))
         } ~
           post {
             entity(as[Consumer]) { consumer =>
-              complete {
-                DatabaseStore.addConsumer(consumer).successHttpCode(StatusCodes.Created)
-              }
+              val result = DatabaseStore.addConsumer(consumer)
+              complete(StatusCode.int2StatusCode(result.code),
+                HttpEntity(ContentTypes.`application/json`, result.toHttpResponseString))
             }
-          }
-      } ~
-      path("consumers" / "token" / Remaining) { token =>
-        delete {
-          complete {
-            DatabaseStore.deleteConsumer(token).successHttpCode(StatusCodes.NoContent)
-          }
-        }
-      } ~
-      path("consumers" / Remaining) { id =>
-        get {
-          complete {
-            DatabaseStore.getConsumer(id)
-          }
-        } ~
+          } ~
           delete {
             optionalHeaderValueByType(classOf[Authorization]) { authorizationHeader =>
               complete {
                 val token = ValidateLimit.getTokenString(authorizationHeader)
                 DatabaseStore
                   .getConsumerByToken(token.getOrElse(""))
-                  .flatMap(consumer => DatabaseStore.deleteConsumer(consumer.consumer_id.get, delete_with_token = false))
+                  .flatMap(consumer => DatabaseStore.deleteConsumer(consumer.consumer_id.get))
                   .successHttpCode(StatusCodes.NoContent)
               }
             }
           }
+      } ~
+      path("consumers" / Remaining) { id =>
+        get {
+          val result = DatabaseStore.getConsumer(id)
+          complete(StatusCode.int2StatusCode(result.code),
+            HttpEntity(ContentTypes.`application/json`, result.toHttpResponseString))
+        }
       } ~
       path("products") {
         get {

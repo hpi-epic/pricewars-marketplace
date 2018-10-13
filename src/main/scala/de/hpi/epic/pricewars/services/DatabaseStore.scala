@@ -139,7 +139,7 @@ object DatabaseStore {
     res1.find(_.isFailure) match {
       case None => Success(res1.map(_.get)) -> StatusCodes.Created
       case Some(failure) => failure match {
-        case f:Failure[Offer] => Success(
+        case f: Failure[Offer] => Success(
           res1.flatMap {
             case Success(v, _) => Some(v)
             case _ => None
@@ -396,6 +396,7 @@ object DatabaseStore {
         Failure(e.getMessage, 500)
     }
   }
+
   // UPDATE table SET user='$user', name='$name' where id ='$id'"
   def updateMerchant(token: String, merchant: Merchant): Result[Merchant] = {
     val res = Try(DB localTx { implicit session =>
@@ -480,7 +481,8 @@ object DatabaseStore {
              WHERE merchant_token = $token
            """
       sqlQuery.map(rs => Merchant(rs)).list.apply().headOption
-    }})
+    }
+    })
     dbResult.flatMap {
       case Some(merchant) => Success(merchant)
       case None => Failure("Not authorized!", 401)
@@ -514,7 +516,8 @@ object DatabaseStore {
         sql"""SELECT COUNT(api_endpoint_url) FROM consumers WHERE api_endpoint_url != ${consumer.api_endpoint_url};
            """
       sqlQuery.map(rs => rs.long(1)).single.apply().get
-    }})
+    }
+    })
     val consumerLimit = config.getLong("consumer_limit")
     if (consumerLimit <= 0 || (dbResult.isSuccess && dbResult.get < consumerLimit)) {
       val res = Try(DB localTx { implicit session =>
@@ -533,11 +536,11 @@ object DatabaseStore {
       res match {
         case scala.util.Success(created_consumer) => {
           kafka_producer.send(KafkaProducerRecord("addConsumer", s"""{"consumer_id": "${created_consumer.consumer_id.get}", "api_endpoint_url": "${consumer.api_endpoint_url}", "consumer_name": "${consumer.consumer_name}", "description": "${consumer.description}", "http_code": 200, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
-          Success(consumer.copy(consumer_id = created_consumer.consumer_id, consumer_token = created_consumer.consumer_token))
+          Success(consumer.copy(consumer_id = created_consumer.consumer_id, consumer_token = created_consumer.consumer_token), 201)
         }
         case scala.util.Failure(e) => {
           kafka_producer.send(KafkaProducerRecord("addConsumer", s"""{"api_endpoint_url": "${consumer.api_endpoint_url}", "consumer_name": "${consumer.consumer_name}", "description": "${consumer.description}", "http_code": 500, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
-          Failure(e.getMessage, 500)
+          Failure(e.getMessage)
         }
       }
     } else {
@@ -546,39 +549,22 @@ object DatabaseStore {
     }
   }
 
-  def deleteConsumer(delete_parameter: String, delete_with_token: Boolean = true): Result[Unit] = {
-    var sql = sql""
-    if (delete_with_token) {
-      sql = sql"DELETE FROM consumers WHERE consumer_token = $delete_parameter RETURNING consumer_id, NULL AS consumer_token, api_endpoint_url, consumer_name, description"
-    } else {
-      sql = sql"DELETE FROM consumers WHERE consumer_id = $delete_parameter RETURNING consumer_id, NULL AS consumer_token, api_endpoint_url, consumer_name, description"
-    }
+  def deleteConsumer(id: String, delete_with_token: Boolean = true): Result[Unit] = {
+    val sql = sql"DELETE FROM consumers WHERE consumer_id = $id RETURNING consumer_id, NULL AS consumer_token, api_endpoint_url, consumer_name, description"
+
     val res = Try(DB localTx { implicit session =>
       sql.map(rs => Consumer(rs)).list.apply().headOption.get.consumer_id.get
     })
     res match {
-      case scala.util.Success(id) if id.length > 0 => {
-        kafka_producer.send(KafkaProducerRecord("deleteConsumer", s"""{"consumer_id": "$id", "http_code": 200, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
+      case scala.util.Success(deleted_id) if deleted_id.length > 0 =>
+        kafka_producer.send(KafkaProducerRecord("deleteConsumer", s"""{"consumer_id": "$deleted_id", "http_code": 200, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
         Success((): Unit)
-      }
-      case scala.util.Success(id) if id.length == 0 => {
-        if (delete_with_token) {
-          kafka_producer.send(KafkaProducerRecord("deleteConsumer", s"""{"consumer_token": "$delete_parameter", "http_code": 404, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
-          Failure(s"No consumer with token $delete_parameter", 404)
-        } else {
-          kafka_producer.send(KafkaProducerRecord("deleteConsumer", s"""{"consumer_id": "$delete_parameter", "http_code": 404, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
-          Failure(s"No consumer with id $delete_parameter", 404)
-        }
-      }
-      case scala.util.Failure(e) => {
-        if (delete_with_token) {
-          kafka_producer.send(KafkaProducerRecord("deleteConsumer", s"""{"consumer_token": "$delete_parameter", "http_code": 500, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
-          Failure(e.getMessage, 500)
-        } else {
-          kafka_producer.send(KafkaProducerRecord("deleteConsumer", s"""{"consumer_id": "$delete_parameter", "http_code": 500, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
-          Failure(e.getMessage, 500)
-        }
-      }
+      case scala.util.Success(deleted_id) if deleted_id.length == 0 =>
+        kafka_producer.send(KafkaProducerRecord("deleteConsumer", s"""{"consumer_id": "$id", "http_code": 404, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
+        Failure(s"No consumer with id $id", 404)
+      case scala.util.Failure(e) =>
+        kafka_producer.send(KafkaProducerRecord("deleteConsumer", s"""{"consumer_id": "$id", "http_code": 500, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
+        Failure(e.getMessage)
     }
   }
 
@@ -601,7 +587,8 @@ object DatabaseStore {
 
   def getConsumerByToken(token: String): Result[Consumer] = {
     val dbResult = Result(DB readOnly { implicit session =>
-      val sqlQuery = sql"""SELECT consumer_id, api_endpoint_url, consumer_name, description, NULL AS consumer_token
+      val sqlQuery =
+        sql"""SELECT consumer_id, api_endpoint_url, consumer_name, description, NULL AS consumer_token
           FROM consumers
           WHERE consumer_token = $token"""
       sqlQuery.map(rs => Consumer(rs)).list.apply().headOption
@@ -612,43 +599,23 @@ object DatabaseStore {
     }
   }
 
-  def getConsumer(search_parameter: String, search_with_token: Boolean = false): Result[Consumer] = {
+  def getConsumer(id: String): Result[Consumer] = {
     val res = Try(DB readOnly { implicit session =>
-      var sql_query = sql""
-      if (!search_with_token) {
-        sql_query = sql"""SELECT consumer_id, api_endpoint_url, consumer_name, description, NULL AS consumer_token
+      sql"""SELECT consumer_id, api_endpoint_url, consumer_name, description, NULL AS consumer_token
           FROM consumers
-          WHERE consumer_id = $search_parameter"""
-      } else {
-        sql_query = sql"""SELECT consumer_id, api_endpoint_url, consumer_name, description, NULL AS consumer_token
-          FROM consumers
-          WHERE consumer_token = $search_parameter"""
-      }
-        sql_query.map(rs => Consumer(rs)).list.apply().headOption
+          WHERE consumer_id = $id"""
+        .map(rs => Consumer(rs)).list.apply().headOption
     })
     res match {
-      case scala.util.Success(Some(v)) => {
+      case scala.util.Success(Some(v)) =>
         kafka_producer.send(KafkaProducerRecord("getConsumer", s"""{"consumer_id": "${v.consumer_id.get}", "http_code": 200, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
         Success(v)
-      }
-      case scala.util.Success(None) => {
-        if (!search_with_token) {
-          kafka_producer.send(KafkaProducerRecord("getConsumer", s"""{"consumer_id": "$search_parameter", "http_code": 404, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
-          Failure(s"No consumer with key $search_parameter found", 404)
-        } else {
-          kafka_producer.send(KafkaProducerRecord("getConsumer", s"""{"consumer_token": "$search_parameter", "http_code": 404, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
-          Failure(s"No consumer with token $search_parameter found", 404)
-        }
-      }
-      case scala.util.Failure(e) => {
-        if (!search_with_token) {
-          kafka_producer.send(KafkaProducerRecord("getConsumer", s"""{"consumer_id": "$search_parameter", "http_code": 500, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
-          Failure(e.getMessage, 500)
-        } else {
-          kafka_producer.send(KafkaProducerRecord("getConsumer", s"""{"consumer_token": "$search_parameter", "http_code": 500, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
-          Failure(e.getMessage, 500)
-        }
-      }
+      case scala.util.Success(None) =>
+        kafka_producer.send(KafkaProducerRecord("getConsumer", s"""{"consumer_id": "$id", "http_code": 404, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
+        Failure(s"No consumer with key $id found", 404)
+      case scala.util.Failure(e) =>
+        kafka_producer.send(KafkaProducerRecord("getConsumer", s"""{"consumer_id": "$id", "http_code": 500, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
+        Failure(e.getMessage)
     }
   }
 
