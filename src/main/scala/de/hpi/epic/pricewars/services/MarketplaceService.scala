@@ -1,11 +1,8 @@
 package de.hpi.epic.pricewars.services
 
 import scala.language.postfixOps
-import akka.event.Logging
-import akka.http.scaladsl.marshalling.Marshaller
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Route
-import akka.http.scaladsl.server.directives.DebuggingDirectives
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.model.headers.Authorization
 import de.hpi.epic.pricewars.utils.JSONConverter._
@@ -15,8 +12,6 @@ import de.hpi.epic.pricewars.utils.ResultConverter._
 
 
 object MarketplaceService {
-  //DebuggingDirectives.logRequestResult("logging_test_test", Logging.InfoLevel)
-
   var defaultHoldingCostRate: BigDecimal = 0
 
   val route: Route = {
@@ -25,18 +20,16 @@ object MarketplaceService {
         optionalHeaderValueByType(classOf[Authorization]) { authorizationHeader =>
           parameter('product_id.as[Long] ?) { product_id =>
             parameter('include_empty_offer.as[Boolean] ?) { include_empty_offer =>
-              complete {
-                if (include_empty_offer.getOrElse(false)) {
-                  val merchant = DatabaseStore.getMerchantByToken(ValidateLimit.getTokenString(authorizationHeader).getOrElse(""))
-                  if (merchant.isSuccess) {
-                    DatabaseStore.getOffers(product_id, merchant.get.merchant_id)
-                  } else {
-                    DatabaseStore.getOffers(product_id, None)
-                  }
-                } else {
-                  DatabaseStore.getOffers(product_id, None)
+              var merchant_id: Option[String] = None
+              if (include_empty_offer.getOrElse(false)) {
+                val merchant = DatabaseStore.getMerchantByToken(ValidateLimit.getTokenString(authorizationHeader).getOrElse(""))
+                if (merchant.isSuccess) {
+                  merchant_id = merchant.get.merchant_id
                 }
               }
+              val result = DatabaseStore.getOffers(product_id, merchant_id)
+              complete(StatusCode.int2StatusCode(result.code),
+                HttpEntity(ContentTypes.`application/json`, result.toHttpResponseString))
             }
           }
         }

@@ -294,7 +294,7 @@ object DatabaseStore {
       }
       case scala.util.Failure(e) => {
         kafka_producer.send(KafkaProducerRecord("updateOffer", s"""{"offer_id": $offer_id, "uid": ${offer.uid}, "product_id": ${offer.product_id}, "quality": ${offer.quality}, "merchant_id": "${merchant.merchant_id.get}", "amount": ${offer.amount}, "price": ${offer.price}, "shipping_time_standard": ${offer.shipping_time.standard}, "shipping_time_prime": ${offer.shipping_time.prime.getOrElse(0)}, "prime": ${offer.prime}, "http_code": 500, "timestamp": "${ZonedDateTime.now().format(dateFormatter)}"}"""))
-        Failure(e.getMessage, 500)
+        Failure(e.getMessage)
       }
     }
   }
