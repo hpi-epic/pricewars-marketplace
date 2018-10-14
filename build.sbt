@@ -14,9 +14,7 @@ libraryDependencies ++= {
   val sprayV = "1.3.3"
   val specs2V = "3.8.6"
   val scalikejdbcV = "3.3.0"
-  val logbackV = "1.1.8"
   val kafkaV = "1.1.1"
-  val scalaxmlV = "1.0.6"
   val commonsCodecV = "1.10"
   val redisClientV = "3.8"
   val scalarxV = "0.3.2"
@@ -33,9 +31,7 @@ libraryDependencies ++= {
     "org.specs2"              %% "specs2-core"               % specs2V % "test",
     "org.scalikejdbc"         %% "scalikejdbc"               % scalikejdbcV,
     "org.scalikejdbc"         %% "scalikejdbc-config"        % scalikejdbcV,
-    "ch.qos.logback"          %  "logback-classic"           % logbackV,
     "net.cakesolutions"       %% "scala-kafka-client-akka"   % kafkaV,
-    "org.scala-lang.modules"  %% "scala-xml"                 % scalaxmlV,
     "commons-codec"           %  "commons-codec"             % commonsCodecV,
     "net.debasishg"           %% "redisclient"               % redisClientV,
     "com.lihaoyi"             %% "scalarx"                   % scalarxV
