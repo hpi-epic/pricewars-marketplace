@@ -20,18 +20,36 @@ The marketplace is written in Scala and managed with sbt. Ensure to have a sbt i
 
 ## Setup
 
-First, create a new database for the marketplace to connect to on `localhost:5432` or change the corresponding settings: `CREATE DATABASE marketplace;`
+First, create a new Postgres database for the marketplace to connect to on `localhost:5432` or change the corresponding settings: `CREATE DATABASE marketplace;`
 * Database Name: `marketplace`
 * Database User: `postgres`
 * Database User password: ` ` (none)
 
-After cloning the repository, run `sbt update` and `sbt compile` to download all required dependencies and compile the sorce code. Once you're done, you might start the server by either running `sbt ~tomcat:start` or `sbt tomcat:start`. The difference between the two commands is, that the first one with the ~ reloads all source code files (incl. compiling) when changes are made to any of these, while the second doesn't reflect changes made to files after the server has been started.
+After cloning the repository, run `sbt update` and `sbt compile` to download all required dependencies and compile the sorce code.
+Once you're done, you might start the server by either running `sbt run`.
 
 In the default configuration, you can access the server with `http://localhost:8080/` in your browser or by using your preferred REST GUI. All available routes are documented in our global API definition, available here: https://hpi-epic.github.io/masterproject-pricewars.
 
 ## Configuration
 
 All pre-defined config settings are located in `/src/main/resources/application.conf`. Where appropiate, values from the environment are used (for the Docker setup) and a specialized config file `/src/main/resources/application.deployment.conf` is present for our VM deployment.
+
+## Testing
+
+As a prerequisite to run tests the three services `Kafka`, `Redis`, and `Postgres` must run.
+
+You can use the configuration from the Price Wars repository and run Kafka and Redis with the command `docker-compose up kafka redis`.
+Kafka could be stubbed out for tests but this is not implemented yet.
+
+We recommend the following commands to run a local Postgres instance as Docker container used for testing:
+```
+docker run -d -p 5432:5432 --name marketplace_test_db -e POSTGRES_PASSWORD="" -d postgres:9.6.5
+docker exec -it marketplace_test_db bash
+psql -U postgres
+CREATE DATABASE marketplace_test;
+```
+
+If these services are running you can run marketplace tests with `sbt test`.
 
 ## Concept
 
