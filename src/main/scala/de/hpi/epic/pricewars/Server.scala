@@ -1,11 +1,17 @@
 package de.hpi.epic.pricewars
 
-import akka.actor.{ActorSystem, Props}
-import de.hpi.epic.pricewars.services.{DatabaseStore, MarketplaceServiceActor}
-import spray.servlet.WebBoot
+import akka.actor.ActorSystem
+import akka.http.scaladsl.Http
+import akka.stream.ActorMaterializer
+import de.hpi.epic.pricewars.services.{DatabaseStore, MarketplaceService}
 
-class Server extends WebBoot {
-  implicit val system = ActorSystem("marketplace")
-  val serviceActor = system.actorOf(Props[MarketplaceServiceActor])
-  DatabaseStore.setup()
+object Server {
+  def main(args: Array[String]) {
+
+    implicit val system: ActorSystem = ActorSystem("marketplace")
+    implicit val materializer: ActorMaterializer = ActorMaterializer()
+
+    DatabaseStore.setup()
+    Http().bindAndHandle(MarketplaceService.route, "0.0.0.0", port = 8080)
+  }
 }

@@ -2,22 +2,19 @@ package de.hpi.epic.pricewars.connectors
 
 import javax.crypto.Cipher
 import javax.crypto.spec.SecretKeySpec
-
 import akka.actor.ActorSystem
-import akka.io.IO
-import akka.pattern.ask
-import akka.util.Timeout
+import akka.http.scaladsl.Http
+import akka.http.scaladsl.model.{HttpRequest, HttpResponse, StatusCodes}
+import akka.http.scaladsl.unmarshalling.Unmarshal
+import akka.stream.ActorMaterializer
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.commons.codec.binary.Base64
-import spray.can.Http
-import spray.http.HttpMethods._
-import spray.http._
 import spray.json._
 
-import scala.concurrent.Await
+import scala.concurrent.{Await, ExecutionContextExecutor}
 import scala.concurrent.duration._
-
 import de.hpi.epic.pricewars.data.Signature
+
 
 object ProducerConnector {
   val config: Config = ConfigFactory.load
@@ -26,22 +23,22 @@ object ProducerConnector {
   var producer_key: Option[String] = None
 
   implicit val system: ActorSystem = ActorSystem()
-  implicit val timeout: Timeout = Timeout(15.seconds)
+  // needed for onComplete
+  implicit val executionContext: ExecutionContextExecutor = system.dispatcher
+  // used for Unmarshal
+  implicit val materializer: ActorMaterializer = ActorMaterializer()
 
   def getProducerKey(url: String = producer_url): Option[String] = {
-    val request = (IO(Http) ? HttpRequest(GET, Uri(url + "/decryption_key"))).mapTo[HttpResponse]
-    try {
-      Await.result(request, Duration.Inf) match {
-        case HttpResponse(status, entity, headers, protocol) =>
-          val response_json = entity.asString.parseJson
-          response_json.asJsObject.getFields("decryption_key") match {
-            case Seq(JsString(decryption_key)) =>
-              println("Producer Key updated!: " + decryption_key)
-              Some(decryption_key)
+    val responseFuture = Http().singleRequest(HttpRequest(uri = url + "/decryption_key"))
+    Await.result(responseFuture, 1.second) match {
+      case response @ HttpResponse(StatusCodes.OK, _, _, _) =>
+        Await.result(Unmarshal(response.entity).to[String].map { jsonString =>
+          jsonString.parseJson.asJsObject.getFields("decryption_key") match {
+            case Seq(JsString(decryption_key)) => Some(decryption_key)
+            case _ => None
           }
-      }
-    } catch {
-      case e: Exception => None
+        }, 1.second)
+      case _ => None
     }
   }
 
