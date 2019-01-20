@@ -5,6 +5,7 @@ import scalikejdbc._
 case class Merchant( api_endpoint_url: String,
                      merchant_name: String,
                      algorithm_name: String,
+                     color: String, 
                      merchant_id: Option[String],
                      merchant_token: Option[String])
 
@@ -14,6 +15,7 @@ object Merchant extends SQLSyntaxSupport[Merchant] {
     rs.string("api_endpoint_url"),
     rs.string("merchant_name"),
     rs.string("algorithm_name"),
+    rs.string("color"),
     rs.stringOpt("merchant_id"),
     rs.stringOpt("merchant_token"))
 }

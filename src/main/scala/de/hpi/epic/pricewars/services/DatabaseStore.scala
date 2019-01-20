@@ -47,6 +47,7 @@ object DatabaseStore {
         api_endpoint_url TEXT NOT NULL,
         merchant_name TEXT NOT NULL,
         algorithm_name TEXT NOT NULL,
+        color TEXT NOT NULL,
         holding_cost_rate NUMERIC(11,2) NOT NULL,
         register_timestamp timestamp not null default CURRENT_TIMESTAMP
       )""".execute.apply()
@@ -381,9 +382,10 @@ object DatabaseStore {
            ${merchant.api_endpoint_url},
            ${merchant.merchant_name},
            ${merchant.algorithm_name},
+           ${merchant.color},
            $holdingCostRate
          FROM token_hash, token
-         RETURNING merchant_id, merchant_token, api_endpoint_url, merchant_name, algorithm_name""".map(rs => Merchant(rs)).list.apply().headOption.get
+         RETURNING merchant_id, merchant_token, api_endpoint_url, merchant_name, algorithm_name, color""".map(rs => Merchant(rs)).list.apply().headOption.get
     })
     res match {
       case scala.util.Success(created_merchant) =>
@@ -404,7 +406,8 @@ object DatabaseStore {
         SET
           api_endpoint_url = ${merchant.api_endpoint_url},
           merchant_name = ${merchant.merchant_name},
-          algorithm_name = ${merchant.algorithm_name}
+          algorithm_name = ${merchant.algorithm_name},
+          color = ${merchant.color}
         WHERE merchant_token = ${token}
         RETURNING merchant_id, merchant_token, api_endpoint_url, merchant_name, algorithm_name""".map(rs => Merchant(rs)).list.apply().headOption.get
     })
@@ -458,7 +461,7 @@ object DatabaseStore {
 
   def getMerchants: Result[Seq[Merchant]] = {
     val res = Try(DB readOnly { implicit session =>
-      sql"SELECT merchant_id, api_endpoint_url, merchant_name, algorithm_name, NULL as merchant_token FROM merchants"
+      sql"SELECT merchant_id, api_endpoint_url, merchant_name, algorithm_name, color, NULL as merchant_token FROM merchants"
         .map(rs => Merchant(rs)).list.apply()
     })
     res match {
@@ -476,7 +479,7 @@ object DatabaseStore {
   def getMerchantByToken(token: String): Result[Merchant] = {
     val dbResult = Result(DB readOnly { implicit session => {
       val sqlQuery =
-        sql"""SELECT merchant_id, api_endpoint_url, merchant_name, algorithm_name, NULL AS merchant_token
+        sql"""SELECT merchant_id, api_endpoint_url, merchant_name, algorithm_name, color, NULL AS merchant_token
              FROM merchants
              WHERE merchant_token = $token
            """
@@ -492,7 +495,7 @@ object DatabaseStore {
   def getMerchant(id: String): Result[Merchant] = {
     val res = Try(DB readOnly { implicit session =>
       val sql_query =
-        sql"""SELECT merchant_id, api_endpoint_url, merchant_name, algorithm_name, NULL AS merchant_token
+        sql"""SELECT merchant_id, api_endpoint_url, merchant_name, algorithm_name, color, NULL AS merchant_token
         FROM merchants
         WHERE merchant_id = $id"""
       sql_query.map(rs => Merchant(rs)).list.apply().headOption
