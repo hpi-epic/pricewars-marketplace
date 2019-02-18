@@ -5,6 +5,7 @@ import spray.json.{DefaultJsonProtocol, JsonFormat, RootJsonFormat}
 import de.hpi.epic.pricewars.data._
 
 object JSONConverter extends SprayJsonSupport with DefaultJsonProtocol {
+  // The number after the jsonFormat function corresponds to the number of attributes contained in each class
   implicit val shippingTimeFormat: RootJsonFormat[ShippingTime] = jsonFormat2(ShippingTime.apply)
   implicit val offerFormat: RootJsonFormat[Offer] = jsonFormat10(Offer.apply)
   implicit val offerPatchFormat: RootJsonFormat[OfferPatch] = jsonFormat9(OfferPatch)
