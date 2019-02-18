@@ -17,8 +17,8 @@ class MerchantTests extends BeforeAfterEach with SpecificationLike with Specs2Ro
   private val route = MarketplaceService.route
 
   private val merchants = Seq(
-    Merchant("endpoint1:8080", "merchant1", "lala", None, None),
-    Merchant("endpoint2:8090", "merchant2", "blub", None, None)
+    Merchant("endpoint1:8080", "merchant1", "lala", "#000000", None, None),
+    Merchant("endpoint2:8090", "merchant2", "blub", "#0F0000", None, None)
   )
 
   override def before(): Unit = {
@@ -37,6 +37,7 @@ class MerchantTests extends BeforeAfterEach with SpecificationLike with Specs2Ro
         merchants.head.api_endpoint_url mustEqual "endpoint1:8080"
         merchants.head.merchant_name mustEqual "merchant1"
         merchants.head.algorithm_name mustEqual "lala"
+        merchants.head.color mustEqual "#000000"
         merchants.head.merchant_id mustNotEqual None
         merchants.head.merchant_token must beNone
       }
@@ -50,6 +51,7 @@ class MerchantTests extends BeforeAfterEach with SpecificationLike with Specs2Ro
         merchant.api_endpoint_url mustEqual "endpoint2:8090"
         merchant.merchant_name mustEqual "merchant2"
         merchant.algorithm_name mustEqual "blub"
+        merchant.color mustEqual "#0F0000"
         merchant.merchant_id mustNotEqual None
         merchant.merchant_token mustNotEqual None
       }
@@ -74,6 +76,7 @@ class MerchantTests extends BeforeAfterEach with SpecificationLike with Specs2Ro
         merchant.api_endpoint_url mustEqual "endpoint2:8090"
         merchant.merchant_name mustEqual "merchant2"
         merchant.algorithm_name mustEqual "blub"
+        merchant.color mustEqual "#0F0000"
         merchant.merchant_id.get mustEqual merchant_id
         merchant.merchant_token must beNone
       }
